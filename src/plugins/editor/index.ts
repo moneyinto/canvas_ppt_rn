@@ -13,7 +13,7 @@ export default class Editor {
     // private _cursor: Cursor;
     // private _textarea: Textarea;
     private _viewStage: ViewStage;
-    private _controlStage: ControlStage;
+    public controlStage: ControlStage;
 
     constructor(canvasScreen: Canvas, canvasControl: Canvas, width: number, height: number, slides: ISlide[]) {
         // 监听
@@ -23,7 +23,7 @@ export default class Editor {
         this.stageConfig = new StageConfig(width, height, 20);
         // 防抖，减少渲染叠加
         this.stageConfig.resetDrawView = () => this._viewStage.resetDrawPage();
-        this.stageConfig.resetDrawOprate = () => this._controlStage.resetDrawOprate();
+        this.stageConfig.resetDrawOprate = () => this.controlStage.resetDrawOprate();
         // this.stageConfig.hideCursor = () => this._controlStage.hideCursor();
         // this.stageConfig.getFontSize = (text) => {
         //     return this._controlStage.getFontSize(text);
@@ -46,7 +46,7 @@ export default class Editor {
         this._viewStage = new ViewStage(canvasScreen, this.stageConfig);
 
         // 创建操作画板
-        this._controlStage = new ControlStage(canvasControl, this.stageConfig);
+        this.controlStage = new ControlStage(canvasControl, this.stageConfig);
 
         // this._container = container;
         // this._resizeObserver = new ResizeObserver(throttleRAF(this._reset.bind(this)));
@@ -59,7 +59,7 @@ export default class Editor {
     }
 
     private _reset() {
-        this._controlStage.resetStage();
+        this.controlStage.resetStage();
         this._viewStage.resetStage();
 
         this.stageConfig.resetBaseZoom();

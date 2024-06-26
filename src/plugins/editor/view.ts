@@ -24,7 +24,7 @@ export default class ViewStage extends Stage {
         this.ctx.shadowColor = "#eee";
         this.ctx.shadowBlur = 12;
 
-        this.ctx.fillStyle = "white";
+        this.ctx.fillStyle = "#ffffff";
         this.ctx.fillRect(x, y, stageWidth, stageHeight);
 
         // 绘制背景
