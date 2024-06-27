@@ -2,12 +2,13 @@ import { useEffect, useRef } from "react";
 import { PanResponder, StyleSheet, View } from "react-native";
 import Canvas from "react-native-canvas";
 import Editor from "../plugins/editor";
+import { slides } from "../mock";
 
 function LayoutEditor(): JSX.Element {
     const canvasScreenRef = useRef(null);
     const canvasControlRef = useRef(null);
     const ContainerRef = useRef(null);
-    let editor: Editor | null = null;
+    let instance: Editor | null = null;
 
     useEffect(() => {
         const canvasScreen = canvasScreenRef.current as Canvas | null;
@@ -16,7 +17,7 @@ function LayoutEditor(): JSX.Element {
         if (canvasScreen && canvasControl && container) {
             setTimeout(() => {
                 container.measure((x, y, width, height, left, top) => {
-                    editor = new Editor(canvasScreen, canvasControl, width, height, []);
+                    instance = new Editor(canvasScreen, canvasControl, width, height, slides);
                 });
             })
         }
@@ -29,14 +30,14 @@ function LayoutEditor(): JSX.Element {
             onMoveShouldSetPanResponderCapture: () => true,
             onStartShouldSetPanResponderCapture: () => true,
             onPanResponderGrant: (e, gestureState) => {
-                editor?.controlStage.touchStart(e);
+                instance?.controlStage.touchStart(e);
             },
             onPanResponderMove: (e, gestureState) => {
-                editor?.controlStage.touchMove(e);
+                instance?.controlStage.touchMove(e);
             },
             onPanResponderTerminationRequest: (evt, gestureState) => true,
             onPanResponderRelease: (e, gestureState) => {
-                editor?.controlStage.touchEnd(e);
+                instance?.controlStage.touchEnd(e);
             }
         })
     ).current;

@@ -17,7 +17,6 @@ export default class ViewStage extends Stage {
 
     private _drawPage() {
         const { x, y, stageWidth, stageHeight } = this.stageConfig.getStageArea();
-        console.log("dddd", x, y, stageWidth, stageHeight);
         const currentSlide = this.stageConfig.getCurrentSlide();
 
         // 设置阴影
@@ -33,8 +32,8 @@ export default class ViewStage extends Stage {
         // 移除阴影设置
         this.ctx.shadowColor = "";
         this.ctx.shadowBlur = 0;
-
-        console.log("====draw");
+        
+        // 绘制元素
         const elements = currentSlide?.elements || [];
         this.drawElements(elements);
     }

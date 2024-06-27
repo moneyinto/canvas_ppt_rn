@@ -29,8 +29,8 @@ export default class Editor {
         //     return this._controlStage.getFontSize(text);
         // };
 
-        // this.stageConfig.setSlides(slides);
-        // if (slides.length > 0) this.stageConfig.setSlideId(slides[0].id);
+        this.stageConfig.setSlides(slides);
+        if (slides.length > 0) this.stageConfig.setSlideId(slides[0].id);
 
         // const db = new DB();
         // 历史数据
