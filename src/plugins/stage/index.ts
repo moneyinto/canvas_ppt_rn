@@ -1,6 +1,7 @@
 import Canvas, { CanvasRenderingContext2D } from "react-native-canvas";
 import { IPPTElement } from "../../types/element";
 import StageConfig from "./config";
+import Shape from "./shape";
 
 export default class Stage {
     public canvas: Canvas;
@@ -10,7 +11,7 @@ export default class Stage {
     // private _db: DB;
     // private _line: Line | null;
     // private _richText: RichText | null;
-    // private _shape: Shape | null;
+    private _shape: Shape | null;
     // private _picture: Picture | null;
     // private _video: Video | null;
     // private _music: Music | null;
@@ -28,7 +29,7 @@ export default class Stage {
 
         // this._line = null;
         // this._richText = null;
-        // this._shape = null;
+        this._shape = null;
         // this._picture = null;
         // this._video = null;
         // this._music = null;
@@ -63,11 +64,11 @@ export default class Stage {
 
     public drawElement(element: IPPTElement, isThumbnail?: boolean) {
         switch (element.type) {
-            // case "shape": {
-            //     if (!this._shape) this._shape = new Shape(this.stageConfig, this.ctx);
-            //     this._shape.draw(element);
-            //     break;
-            // }
+            case "shape": {
+                if (!this._shape) this._shape = new Shape(this.stageConfig, this.canvas, this.ctx);
+                this._shape.draw(element);
+                break;
+            }
             // case "line": {
             //     if (!this._line) this._line = new Line(this.stageConfig, this.ctx);
             //     this._line.draw(element);
@@ -112,6 +113,7 @@ export default class Stage {
     }
 
     public drawElements(elements: IPPTElement[], isThumbnail?: boolean) {
+        console.log("xxx", elements);
         for (const element of elements) {
             // if (this.stageConfig.animationHideElements.indexOf(element.id) !== -1) continue;
             this.drawElement(element, isThumbnail);
