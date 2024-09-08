@@ -2,6 +2,8 @@ import Canvas, { CanvasRenderingContext2D } from "react-native-canvas";
 import { IPPTElement } from "../../types/element";
 import StageConfig from "./config";
 import Shape from "./shape";
+import Line from "./line";
+import RichText from "./richText";
 
 export default class Stage {
     public canvas: Canvas;
@@ -9,8 +11,8 @@ export default class Stage {
     public stageConfig: StageConfig;
 
     // private _db: DB;
-    // private _line: Line | null;
-    // private _richText: RichText | null;
+    private _line: Line | null;
+    private _richText: RichText | null;
     private _shape: Shape | null;
     // private _picture: Picture | null;
     // private _video: Video | null;
@@ -27,8 +29,8 @@ export default class Stage {
         const { ctx } = this._createStage();
         this.ctx = ctx;
 
-        // this._line = null;
-        // this._richText = null;
+        this._line = null;
+        this._richText = null;
         this._shape = null;
         // this._picture = null;
         // this._video = null;
@@ -69,21 +71,21 @@ export default class Stage {
                 this._shape.draw(element);
                 break;
             }
-            // case "line": {
-            //     if (!this._line) this._line = new Line(this.stageConfig, this.ctx);
-            //     this._line.draw(element);
-            //     break;
-            // }
+            case "line": {
+                if (!this._line) this._line = new Line(this.stageConfig, this.ctx);
+                this._line.draw(element);
+                break;
+            }
             // case "image": {
             //     if (!this._picture) this._picture = new Picture(this.stageConfig, this.ctx, this._db);
             //     this._picture?.draw(element);
             //     break;
             // }
-            // case "text": {
-            //     if (!this._richText) this._richText = new RichText(this.stageConfig, this.ctx);
-            //     this._richText!.draw(element);
-            //     break;
-            // }
+            case "text": {
+                if (!this._richText) this._richText = new RichText(this.stageConfig, this.canvas, this.ctx);
+                this._richText!.draw(element);
+                break;
+            }
             // case "video": {
             //     if (!this._video) this._video = new Video(this.stageConfig, this.ctx, this._db);
             //     this._video?.draw(element, !!isThumbnail);
