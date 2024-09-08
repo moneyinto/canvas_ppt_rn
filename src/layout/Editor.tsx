@@ -1,8 +1,15 @@
 import { useEffect, useRef } from "react";
-import { PanResponder, StyleSheet, View } from "react-native";
+import {
+    Image,
+    PanResponder,
+    StyleSheet,
+    TouchableOpacity,
+    View
+} from "react-native";
 import Canvas from "react-native-canvas";
 import Editor from "../plugins/editor";
 import { slides } from "../mock";
+import NavHeader from "./NavHeader/index";
 
 function LayoutEditor(): JSX.Element {
     const canvasScreenRef = useRef(null);
@@ -17,9 +24,16 @@ function LayoutEditor(): JSX.Element {
         if (canvasScreen && canvasControl && container) {
             setTimeout(() => {
                 container.measure((x, y, width, height, left, top) => {
-                    instance = new Editor(canvasScreen, canvasControl, width, height, slides);
+                    console.log(x, y, width, height, left, top);
+                    instance = new Editor(
+                        canvasScreen,
+                        canvasControl,
+                        width,
+                        height,
+                        slides
+                    );
                 });
-            })
+            }, 300);
         }
     }, []);
 
@@ -43,21 +57,37 @@ function LayoutEditor(): JSX.Element {
     ).current;
 
     return (
-        <View
-            { ...panResponder.panHandlers }
-            style={styles.ContainerStyle}
-            ref={ContainerRef}
-        >
-            <Canvas ref={canvasScreenRef} />
-            <Canvas style={styles.canvasControlStyle} ref={canvasControlRef} />
+        <View style={styles.LayoutContainerStyle}>
+            <NavHeader />
+            <View
+                {...panResponder.panHandlers}
+                style={styles.CanvasContainerStyle}
+                ref={ContainerRef}
+            >
+                <Canvas
+                    style={styles.CanvasViewStyle}
+                    ref={canvasScreenRef}
+                />
+                <Canvas
+                    style={styles.canvasControlStyle}
+                    ref={canvasControlRef}
+                />
+            </View>
         </View>
     );
 }
 
 const styles = StyleSheet.create({
-    ContainerStyle: {
+    LayoutContainerStyle: {
+        flex: 1
+    },
+    CanvasContainerStyle: {
         flex: 1,
-        position: "relative"
+        position: "relative",
+        backgroundColor: "#f2f2f7"
+    },
+    CanvasViewStyle: {
+        flex: 1
     },
     canvasControlStyle: {
         position: "absolute",

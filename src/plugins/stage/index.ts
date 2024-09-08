@@ -115,7 +115,6 @@ export default class Stage {
     }
 
     public drawElements(elements: IPPTElement[], isThumbnail?: boolean) {
-        console.log("xxx", elements);
         for (const element of elements) {
             // if (this.stageConfig.animationHideElements.indexOf(element.id) !== -1) continue;
             this.drawElement(element, isThumbnail);
