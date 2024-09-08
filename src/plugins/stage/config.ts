@@ -1,9 +1,10 @@
 import { baseFontConfig } from "../../config/font";
 import { VIEWPORT_SIZE, VIEWRATIO } from "../../config/stage";
-import { IPPTShapeElement, IPPTTableCell, IPPTTableElement, IPPTTextElement } from "../../types/element";
-import { IFontConfig, ILineData } from "../../types/font";
-import { IPPTAnimation, IPPTTurningAnimation, ISlide } from "../../types/slide";
+import { IPPTElement, IPPTShapeElement, IPPTTableCell, IPPTTableElement, IPPTTextElement } from "../../types/element";
+import { IFontConfig, IFontData, ILineData } from "../../types/font";
+import { IPPTAnimation, IPPTTurningAnimation, ISlide, ISlideBackground } from "../../types/slide";
 import { deepClone } from "../../utils";
+import Listener from "../editor/listener";
 
 export const TEXT_MARGIN = 5;
 
@@ -13,11 +14,17 @@ export default class StageConfig {
     public zoom: number;
     public canMove: boolean;
 
+    public operateElements: IPPTElement[]; // 选中操作元素
+
+    public autoVideoRender = false;
+
     public slides: ISlide[] = [];
     public slideId = "";
 
     public resetDrawView: (() => void) | null;
     public resetDrawOprate: (() => void) | null;
+    public hideCursor: () => void;
+    public getFontSize: ((text: IFontData) => { width: number, height: number }) | null;
 
     private _width = 0;
     private _height = 0;
@@ -49,10 +56,12 @@ export default class StageConfig {
     // 切页动画
     public turningAni: IPPTTurningAnimation | null = null;
 
+    private _listener: Listener | undefined; // 事件监听
 
     // 边距
     private _margin = 0;
-    constructor(width: number, height: number, margin?: number) {
+    constructor(width: number, height: number,  listener?: Listener, margin?: number) {
+        this._listener = listener;
         this.scrollX = 0;
         this.scrollY = 0;
         this.canMove = false;
@@ -61,10 +70,18 @@ export default class StageConfig {
         this._height = height;
         this._margin = margin || 0;
 
+        this.operateElements = [];
+
         this.zoom = this.getFitZoom();
 
         this.resetDrawView = null;
         this.resetDrawOprate = null;
+        this.hideCursor = () => {};
+        this.getFontSize = null;
+    }
+
+    public setFontConfig(fontConfig: IFontConfig) {
+        this.fontConfig = fontConfig;
     }
 
     public resetCheckDrawView() {
@@ -154,6 +171,11 @@ export default class StageConfig {
         return { x: x / this.zoom, y: y / this.zoom };
     }
 
+    public addElement(element: IPPTElement) {
+        const slide = this.getCurrentSlide();
+        slide?.elements.push(element);
+    }
+
     public setSlides(slides: ISlide[]) {
         this.slides = slides;
     }
@@ -164,6 +186,75 @@ export default class StageConfig {
 
     public getCurrentSlide() {
         return this.slides.find((slide) => this.slideId === slide.id);
+    }
+
+    public setSelectArea(selectArea: [number, number, number, number] | null) {
+        this.selectArea = selectArea;
+    }
+
+    public updateElement(element: IPPTElement) {
+        const slide = this.getCurrentSlide();
+        const index = slide?.elements.findIndex(e => e.id === element.id);
+        if (slide && slide.elements && typeof index !== "undefined" && index > -1) {
+            slide.elements[index] = element;
+        }
+    }
+
+    public updateElements(elements: IPPTElement[]) {
+        const slide = this.getCurrentSlide();
+        if (slide && slide.elements && elements.length > 0) {
+            for (const element of elements) {
+                const index = slide?.elements.findIndex(e => e.id === element.id);
+                if (index > -1) {
+                    slide.elements[index] = element;
+                }
+            }
+        }
+    }
+
+    public getElementBoundary(element: IPPTElement) {
+        const boundary = [0, 0, 0, 0];
+        if (element.type === "line") {
+            boundary[0] = Math.min(element.left + element.start[0], element.left + element.end[0]);
+            boundary[1] = Math.min(element.top + element.start[1], element.top + element.end[1]);
+            boundary[2] = Math.max(element.left + element.start[0], element.left + element.end[0]);
+            boundary[3] = Math.max(element.top + element.start[1], element.top + element.end[1]);
+        } else if (element.rotate === 0) {
+            boundary[0] = element.left;
+            boundary[1] = element.top;
+            boundary[2] = element.left + element.width;
+            boundary[3] = element.top + element.height;
+        } else {
+            const cx = element.left + element.width / 2;
+            const cy = element.top + element.height / 2;
+            const rect1 = this.rotate(element.left, element.top, cx, cy, element.rotate);
+            const rect2 = this.rotate(element.left + element.width, element.top, cx, cy, element.rotate);
+            const rect3 = this.rotate(element.left, element.top + element.height, cx, cy, element.rotate);
+            const rect4 = this.rotate(element.left + element.width, element.top + element.height, cx, cy, element.rotate);
+            boundary[0] = Math.min(rect1[0], rect2[0], rect3[0], rect4[0]);
+            boundary[1] = Math.min(rect1[1], rect2[1], rect3[1], rect4[1]);
+            boundary[2] = Math.max(rect1[0], rect2[0], rect3[0], rect4[0]);
+            boundary[3] = Math.max(rect1[1], rect2[1], rect3[1], rect4[1]);
+        }
+
+        return boundary;
+    }
+
+    public getOperateElementsBoundary(elements: IPPTElement[]) {
+        let boundary = [0, 0, 0, 0];
+        for (const [index, element] of elements.entries()) {
+            if (index === 0) {
+                boundary = this.getElementBoundary(element);
+            } else {
+                const boundary1 = this.getElementBoundary(element);
+                boundary[0] = Math.min(boundary[0], boundary1[0]);
+                boundary[1] = Math.min(boundary[1], boundary1[1]);
+                boundary[2] = Math.max(boundary[2], boundary1[2]);
+                boundary[3] = Math.max(boundary[3], boundary1[3]);
+            }
+        }
+
+        return boundary;
     }
 
     /**
@@ -309,5 +400,166 @@ export default class StageConfig {
             center: (width - TEXT_MARGIN * 2 - line.width) / 2,
             right: width - TEXT_MARGIN * 2 - line.width
         }[align];
+    }
+
+    public setOperateElement(element: IPPTElement | null | undefined, multiple: boolean) {
+        const operateElement = deepClone(element);
+        if (!operateElement) {
+            this.operateElements = [];
+            this.textFocus = false;
+            this.textFocusElementId = "";
+            // this.hideCursor && this.hideCursor();
+        } else {
+            if (multiple) {
+                // 多选
+                const index = this.operateElements.findIndex(element => element.id === operateElement.id);
+                if (index === -1) {
+                    this.operateElements.push(operateElement);
+                } else {
+                    // 当多选存在时进行取消
+                    this.operateElements.splice(index, 1);
+                }
+            } else {
+                this.operateElements = [operateElement];
+            }
+        }
+        this._listener?.onSelectedChange(this.operateElements);
+    }
+
+    public updateOperateElements(elements: IPPTElement[]) {
+        this.operateElements = elements;
+        this._listener?.onSelectedChange(this.operateElements);
+    }
+
+    public setBackground(background: ISlideBackground | undefined) {
+        const currentSlide = this.getCurrentSlide();
+        if (currentSlide) {
+            if (background) {
+                currentSlide.background = background;
+            } else {
+                delete currentSlide.background;
+            }
+
+            const index = this.slides.findIndex(slide => slide.id === currentSlide.id);
+            this.slides[index] = currentSlide;
+        }
+    }
+
+    public applyBackgroundAll() {
+        const currentSlide = this.getCurrentSlide();
+        if (currentSlide?.background) {
+            this.slides.forEach(slide => {
+                slide.background = currentSlide.background;
+                this._listener?.onUpdateThumbnailSlide(slide);
+            });
+        }
+    }
+
+    public getSelectArea(selectArea: [number, number, number, number], element: IPPTTextElement | IPPTShapeElement | IPPTTableElement) {
+        const renderContent = this.getRenderContent(element);
+        let startX = 0;
+        let endX = 0;
+        let startOk = false;
+        let endOk = false;
+        renderContent.forEach((lineData, index) => {
+            if (selectArea[1] === index) {
+                // 起始位置属于当前行
+                startX += selectArea[0];
+                startOk = true;
+            } else if (!startOk) {
+                startX += lineData.texts.length;
+            }
+
+            if (selectArea[3] === index) {
+                // 结束位置属于当前行
+                endX += selectArea[2];
+                endOk = true;
+            } else if (!endOk) {
+                endX += lineData.texts.length;
+            }
+        });
+
+        return {
+            startX,
+            endX
+        };
+    }// 初始化动画指针及隐藏元素的集合
+    initSlideAnimation(currentSlide: ISlide) {
+        this.animationIndex = -1;
+        // 为了兼容编辑情况下执行动画
+        this.setSlides([currentSlide]);
+        this.setSlideId(currentSlide.id);
+        const animations = currentSlide.animations || [];
+        const inElIds: string[] = [];
+        const outElIds: string[] = [];
+        animations.forEach((animation) => {
+            const inIndex = inElIds.indexOf(animation.elId);
+            const outIndex = outElIds.indexOf(animation.elId);
+            if (animation.type === "in" && inIndex === -1 && outIndex === -1) {
+                inElIds.push(animation.elId);
+            } else if (animation.type === "out" && outIndex === -1) {
+                outElIds.push(animation.elId);
+            }
+        });
+
+        this.animationHideElements = inElIds;
+
+        // 处理初始化索引值
+        if (animations.length > 0 && animations[0].trigger !== "click") {
+            const nextClick = animations.findIndex((animation) => animation.trigger === "click");
+            if (nextClick === -1) {
+                this.animationIndex = animations.length - 1;
+            } else {
+                this.animationIndex = nextClick - 1;
+            }
+
+            this.setActionAnimationsByIndex(0, this.animationIndex + 1);
+        }
+    }
+
+    // 根据索引获取动画集合
+    setActionAnimationsByIndex(start: number, end: number) {
+        this.actionAnimations = [];
+        const animations = this.getAnimations();
+        const actionAnimations: IPPTAnimation[][] = [];
+        animations.slice(start, end).forEach((animation, index) => {
+            if (index === 0) {
+                actionAnimations.push([animation]);
+            } else if (animation.trigger === "meantime") {
+                const lastIndex = actionAnimations.length - 1;
+                actionAnimations[lastIndex].push(animation);
+            } else if (animation.trigger === "after") {
+                actionAnimations.push([animation]);
+            }
+        });
+
+        this.actionAnimations = actionAnimations;
+    }
+
+    startVideoRender() {
+        this.autoVideoRender = true;
+        requestAnimationFrame(() => {
+            if (this.autoVideoRender) {
+                this.resetCheckDrawView();
+                this.startVideoRender();
+            }
+        });
+    }
+
+    stopVideoRender() {
+        this.autoVideoRender = false;
+        this.resetCheckDrawView();
+    }
+
+    getAnimations() {
+        const currentSlide = this.getCurrentSlide();
+        if (!currentSlide) return [];
+        return currentSlide.animations || [];
+    }
+
+    setAnimations(animations: IPPTAnimation[]) {
+        const currentSlide = this.getCurrentSlide();
+        if (!currentSlide) return;
+        currentSlide.animations = animations;
     }
 }

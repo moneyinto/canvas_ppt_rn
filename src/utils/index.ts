@@ -1,5 +1,4 @@
 import { IRectParameter } from "../types";
-import SparkMD5 from "spark-md5";
 
 export const deepClone = (obj: any) => {
     if (!obj) return obj;
@@ -8,7 +7,7 @@ export const deepClone = (obj: any) => {
 
 export const requestAnimationFrame = (callback: () => void) => {
     setTimeout(callback, 1000 / 60);
-}
+};
 
 /**
  * 角度计算（将角度转换成0-360）
@@ -27,7 +26,7 @@ export const normalizeAngle = (angle: number): number => {
 };
 
 export const checkIsMac = () => {
-    return true
+    return true;
     // return /macintosh|mac os x/i.test(navigator.userAgent);
 };
 
@@ -36,7 +35,7 @@ export const debounce = <T extends unknown[]>(
     delay: number
 ) => {
     let timerId: NodeJS.Timeout | number | null = null; // 使用闭包的特性，存储timerId
-    return function(...args: T) {
+    return function (...args: T) {
         // 当timerId有值时，说明有正在准备执行的函数，需要将它清除
         if (timerId !== null) {
             clearTimeout(timerId);
@@ -55,26 +54,20 @@ export const debounce = <T extends unknown[]>(
  */
 export const isSupportFont = (fontName: string) => {
     // if (typeof fontName !== "string") return false;
-
     // const arial = "Arial";
     // if (fontName.toLowerCase() === arial.toLowerCase()) return true;
-
     // const size = 100;
     // const width = 100;
     // const height = 100;
     // const str = "a";
-
     // const canvas = document.createElement("canvas");
     // const ctx = canvas.getContext("2d", { willReadFrequently: true });
-
     // if (!ctx) return false;
-
     // canvas.width = width;
     // canvas.height = height;
     // ctx.textAlign = "center";
     // ctx.fillStyle = "black";
     // ctx.textBaseline = "middle";
-
     // const getDotArray = (_fontFamily: string) => {
     //     ctx.clearRect(0, 0, width, height);
     //     ctx.font = `${size}px ${_fontFamily}, ${arial}`;
@@ -82,7 +75,6 @@ export const isSupportFont = (fontName: string) => {
     //     const imageData = ctx.getImageData(0, 0, width, height).data;
     //     return [].slice.call(imageData).filter((item) => item !== 0);
     // };
-
     // return getDotArray(arial).join("") !== getDotArray(fontName).join("");
 };
 
@@ -133,47 +125,6 @@ export const isFullScreen = () => {
     // );
 };
 
-/**
- * 文件md5
- * @param file
- * @returns
- */
-export const fileMd5 = (file: File): Promise<string> => {
-    return new Promise((resolve) => {
-        const blobSlice = File.prototype.slice;
-        const chunkSize = 2097152; // 2MB
-        const chunks = Math.ceil(file.size / chunkSize);
-        let currentChunk = 0;
-        const spark = new SparkMD5.ArrayBuffer();
-        const fileReader = new FileReader();
-
-        fileReader.onload = () => {
-            spark.append(fileReader.result as ArrayBuffer); // Append array buffer
-            currentChunk++;
-
-            if (currentChunk < chunks) {
-                loadNext();
-            } else {
-                const md5 = spark.end(); // 得到md5
-                spark.destroy(); // 释放缓存
-                resolve(md5);
-            }
-        };
-
-        fileReader.onerror = () => {
-            console.error("文件md5失败");
-        };
-
-        const loadNext = () => {
-            const start = currentChunk * chunkSize;
-            const end =
-                start + chunkSize >= file.size ? file.size : start + chunkSize;
-            fileReader.readAsArrayBuffer(blobSlice.call(file, start, end));
-        };
-
-        loadNext();
-    });
-};
 
 export const dataURLtoFile = (
     dataurl: string,
@@ -241,7 +192,9 @@ export const getTableElementControlPoints = (
     for (const [colIndex] of widthArr.entries()) {
         if (colIndex < widthArr.length - 1) {
             COLS.push([
-                x + widthArr.slice(0, colIndex + 1).reduce((a, b) => a + b, 0) - 2,
+                x +
+                    widthArr.slice(0, colIndex + 1).reduce((a, b) => a + b, 0) -
+                    2,
                 y,
                 4,
                 height
@@ -254,7 +207,11 @@ export const getTableElementControlPoints = (
         if (rowIndex < heightArr.length - 1) {
             ROWS.push([
                 x,
-                y + heightArr.slice(0, rowIndex + 1).reduce((a, b) => a + b, 0) - 2,
+                y +
+                    heightArr
+                        .slice(0, rowIndex + 1)
+                        .reduce((a, b) => a + b, 0) -
+                    2,
                 width,
                 4
             ]);

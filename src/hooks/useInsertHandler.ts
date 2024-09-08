@@ -1,4 +1,7 @@
+import { hash, readFile } from "react-native-fs";
 import { launchImageLibrary, launchCamera } from "react-native-image-picker";
+import { createImageElement } from "../utils/create";
+import store from "../store";
 
 interface ITabItem {
     name: string;
@@ -7,35 +10,47 @@ interface ITabItem {
 }
 
 export default function useInsertHandler() {
+    // 打开相册
+    const openAlbum = (mediaType: "photo" | "video") => {
+        try {
+            launchImageLibrary(
+                {
+                    mediaType
+                },
+                async (response) => {
+                    console.log(response);
+                    if (!response.didCancel && !response.errorCode) {
+                        const { assets } = response
+                        if (assets?.length) {
+                            const { uri, width = 100, height = 100, type } = assets[0]
+                            if (uri) {
+                                const md5 = await hash(uri, "md5")
+                                const base64 = await readFile(uri, "base64")
+                                await store.editor?.history.saveFile(
+                                    md5,
+                                    `data:${type};base64,` + base64
+                                );
+                                const element = createImageElement(
+                                    width,
+                                    height,
+                                    md5
+                                );
+                                store.editor?.command.executeAddRender([element]);
+                            }
+                        }
+                    }
+                }
+            );
+        } catch (error) {
+            console.error(error);
+        }
+    }
+    // 打开相机
     const actionInsertCommand = (tabItem: ITabItem) => {
         switch (tabItem.command) {
             case "photo":
-                try {
-                    launchImageLibrary(
-                        {
-                            mediaType: "photo"
-                        },
-                        (response) => {
-                            console.log(response);
-                        }
-                    );
-                } catch (error) {
-                    console.error(error);
-                }
-                break;
             case "video":
-                try {
-                    launchImageLibrary(
-                        {
-                            mediaType: "video"
-                        },
-                        (response) => {
-                            console.log(response);
-                        }
-                    );
-                } catch (error) {
-                    console.error(error);
-                }
+                openAlbum(tabItem.command)
                 break;
             case "camera":
                 try {
@@ -54,6 +69,10 @@ export default function useInsertHandler() {
             default:
                 break;
         }
+    }
+
+    const insertImageElement = () => {
+
     }
 
     return {

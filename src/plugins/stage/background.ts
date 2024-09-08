@@ -2,7 +2,7 @@ import { CanvasRenderingContext2D, Image } from "react-native-canvas";
 import { VIEWPORT_SIZE, VIEWRATIO } from "../../config/stage";
 import { ISlideBackground } from "../../types/slide";
 import StageConfig from "./config";
-import DB from "../../utils/sqlLite";
+import DB from "../../utils/db";
 import Gradient from "./gradient";
 import { defaultImage } from "../../config";
 

@@ -10,12 +10,16 @@ import Canvas from "react-native-canvas";
 import Editor from "../plugins/editor";
 import { slides } from "../mock";
 import NavHeader from "./NavHeader/index";
+import useSlideHandler from "../hooks/useSlideHandler";
+import store from "../store";
 
 function LayoutEditor(): JSX.Element {
     const canvasScreenRef = useRef(null);
     const canvasControlRef = useRef(null);
     const ContainerRef = useRef(null);
     let instance: Editor | null = null;
+
+    const { initSlide } = useSlideHandler()
 
     useEffect(() => {
         const canvasScreen = canvasScreenRef.current as Canvas | null;
@@ -32,6 +36,10 @@ function LayoutEditor(): JSX.Element {
                         height,
                         slides
                     );
+
+                    store.editor = instance;
+
+                    initSlide(instance)
                 });
             }, 300);
         }

@@ -4,26 +4,29 @@ import StageConfig from "./config";
 import Shape from "./shape";
 import Line from "./line";
 import RichText from "./richText";
+import Picture from "./picture";
+import DB from "../../utils/db";
 
 export default class Stage {
     public canvas: Canvas;
     public ctx: CanvasRenderingContext2D;
     public stageConfig: StageConfig;
 
-    // private _db: DB;
+    private _db: DB;
     private _line: Line | null;
     private _richText: RichText | null;
     private _shape: Shape | null;
-    // private _picture: Picture | null;
+    private _picture: Picture | null;
     // private _video: Video | null;
     // private _music: Music | null;
     // private _table: Table | null;
     constructor(
         canvas: Canvas,
-        stageConfig: StageConfig
+        stageConfig: StageConfig,
+        db: DB
     ) {
         this.stageConfig = stageConfig;
-        // this._db = db;
+        this._db = db;
 
         this.canvas = canvas;
         const { ctx } = this._createStage();
@@ -32,7 +35,7 @@ export default class Stage {
         this._line = null;
         this._richText = null;
         this._shape = null;
-        // this._picture = null;
+        this._picture = null;
         // this._video = null;
         // this._music = null;
         // this._table = null;
@@ -76,11 +79,11 @@ export default class Stage {
                 this._line.draw(element);
                 break;
             }
-            // case "image": {
-            //     if (!this._picture) this._picture = new Picture(this.stageConfig, this.ctx, this._db);
-            //     this._picture?.draw(element);
-            //     break;
-            // }
+            case "image": {
+                if (!this._picture) this._picture = new Picture(this.stageConfig, this.canvas, this.ctx, this._db);
+                this._picture?.draw(element);
+                break;
+            }
             case "text": {
                 if (!this._richText) this._richText = new RichText(this.stageConfig, this.canvas, this.ctx);
                 this._richText!.draw(element);

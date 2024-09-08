@@ -5,7 +5,6 @@ import { IPPTTurningAnimation, ISlide } from "../../types/slide";
 import Stage from ".";
 import Background from "./background";
 import { CanvasRenderingContext2D } from "react-native-canvas";
-import { requestAnimationFrame } from "../../utils";
 
 /**
  * 动画执行状态控制

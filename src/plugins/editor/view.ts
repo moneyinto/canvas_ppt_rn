@@ -1,15 +1,17 @@
 import Canvas from "react-native-canvas";
 import Stage from "../stage";
 import StageConfig from "../stage/config";
+import DB from "../../utils/db";
 // import Background from "../stage/background";
 
 export default class ViewStage extends Stage {
     // private _background: Background;
     constructor(
         canvas: Canvas,
-        stageConfig: StageConfig
+        stageConfig: StageConfig,
+        db: DB
     ) {
-        super(canvas, stageConfig);
+        super(canvas, stageConfig, db);
 
         // this._background = new Background(stageConfig, this.ctx, db);
         this._drawPage();
