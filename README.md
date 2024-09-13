@@ -49,3 +49,13 @@ Now that you have successfully run the app, let's modify it.
 
    For **iOS**: Hit <kbd>Cmd ⌘</kbd> + <kbd>R</kbd> in your iOS Simulator to reload the app and see your changes!
 
+
+## Step 4: build your app
+
+### For Android
+```bash
+# build
+cd android
+./gradlew assembleRelease
+```
+
