@@ -32,23 +32,48 @@ export default class DB {
         });
     }
 
+    async createHistoryTable() {
+        return new Promise((resolve, reject) => {
+            this.db?.transaction((tx) => {
+                tx.executeSql(
+                    "CREATE TABLE IF NOT EXISTS history (id INTEGER PRIMARY KEY AUTOINCREMENT, optionType TEXT, slideId TEXT, slides TEXT);",
+                    [],
+                    () => {
+                        console.log("Table history created successfully");
+                        resolve(true);
+                    },
+                    (_, error) => {
+                        console.error("Error creating table: " + error)
+                    }
+                );
+    
+                
+            });
+        })
+    }
+
+    async createFileTable() {
+        return new Promise((resolve, reject) => {
+            this.db?.transaction((tx) => {
+                tx.executeSql(
+                    "CREATE TABLE IF NOT EXISTS file (fileId TEXT PRIMARY KEY, content TEXT);",
+                    [],
+                    () => {
+                        console.log("Table file created successfully");
+                        resolve(true);
+                    },
+                    (_, error) => {
+                        console.error("Error creating table: " + error)
+                    }
+                );
+            });
+        });
+    }
+
     async createTable() {
         if (!this.db) await this.init();
-        await this.db?.transaction((tx) => {
-            tx.executeSql(
-                "CREATE TABLE IF NOT EXISTS history (id INTEGER PRIMARY KEY AUTOINCREMENT, optionType TEXT, slideId TEXT, slides TEXT);",
-                [],
-                () => console.log("Table history created successfully"),
-                (_, error) => console.error("Error creating table: " + error)
-            );
-
-            tx.executeSql(
-                "CREATE TABLE IF NOT EXISTS file (fileId TEXT PRIMARY KEY, content TEXT);",
-                [],
-                () => console.log("Table file created successfully"),
-                (_, error) => console.error("Error creating table: " + error)
-            );
-        });
+        await this.createHistoryTable();
+        await this.createFileTable();
     }
 
     async delete(keys: number[]) {
@@ -71,7 +96,7 @@ export default class DB {
                     "SELECT id FROM history",
                     [],
                     (_, result) => {
-                        console.log("Table getting all keys successfully");
+                        console.log("Table getting all keys successfully", result.rows.raw());
                         resolve(result.rows.raw().map((v) => v.id));
                     },
                     (_, error) => {
@@ -92,9 +117,18 @@ export default class DB {
                     [key],
                     (_, result) => {
                         console.log("Table getting data successfully");
-                        const data = result.rows.raw()[0];
-                        data.slides = JSON.parse(data.slides);
-                        resolve(data as IHistory);
+                        const tableData = result.rows.raw();
+                        if (tableData.length > 0) {
+                            const data = tableData[0];
+                            data.slides = JSON.parse(data.slides);
+                            resolve(data as IHistory);
+                        } else {
+                            resolve({
+                                id: 0,
+                                slideId: "",
+                                slides: []
+                            });
+                        }
                     },
                     (_, error) => {
                         console.error("Error getting data: " + error);

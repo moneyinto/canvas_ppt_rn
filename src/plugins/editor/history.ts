@@ -29,7 +29,6 @@ export default class History {
 
     public async add(optionType?: OPTION_TYPE) {
         const data = this._stageConfig.slides;
-        console.log('add', data)
         const history = await this._db.getData(this._snapshotKeys.length === 0 ? -1 : this._snapshotKeys[this.cursor]);
         // 存储值与当前操作变化值相等，则没变化，阻断操作
         if (history && JSON.stringify(data) === JSON.stringify(history.slides)) return;

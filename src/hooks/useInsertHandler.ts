@@ -18,7 +18,6 @@ export default function useInsertHandler() {
                     mediaType
                 },
                 async (response) => {
-                    console.log(response);
                     if (!response.didCancel && !response.errorCode) {
                         const { assets } = response
                         if (assets?.length) {
@@ -71,7 +70,7 @@ export default function useInsertHandler() {
         }
     }
 
-    const insertImageElement = () => {
+    const insertImageElement = (uri: string) => {
 
     }
 
