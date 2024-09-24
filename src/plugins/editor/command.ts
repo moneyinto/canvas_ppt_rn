@@ -128,7 +128,19 @@ export default class Command {
         const zoom = this.getZoom();
 
         // 考虑是否要加上限
-        this._stageConfig.setZoom(zoom + 0.05);
+        this._stageConfig.setZoom(zoom + 0.005);
+    }
+
+    /**
+     * 缩放
+     */
+    public executeZoom(unit: number = 0.05) {
+        const minZoom = this._stageConfig.getFitZoom();
+        const zoom = this.getZoom();
+        console.log("执行scale", zoom, unit);
+        if (zoom + unit >= minZoom) {
+            this._stageConfig.setZoom(zoom + unit);
+        }
     }
 
     /**

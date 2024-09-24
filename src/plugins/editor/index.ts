@@ -52,7 +52,7 @@ export default class Editor {
         this._viewStage = new ViewStage(canvasScreen, this.stageConfig, db);
 
         // 创建操作画板
-        this.controlStage = new ControlStage(canvasControl, this.stageConfig);
+        this.controlStage = new ControlStage(canvasControl, this.stageConfig, db, this.command);
 
         // this._container = container;
         // this._resizeObserver = new ResizeObserver(throttleRAF(this._reset.bind(this)));

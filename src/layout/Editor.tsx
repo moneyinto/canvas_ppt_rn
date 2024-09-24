@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import {
-    Image,
+    Text,
     PanResponder,
     StyleSheet,
     TouchableOpacity,
@@ -49,13 +49,17 @@ function LayoutEditor(): JSX.Element {
         PanResponder.create({
             onMoveShouldSetPanResponder: () => true,
             onStartShouldSetPanResponder: () => true,
-            onMoveShouldSetPanResponderCapture: () => true,
+            onMoveShouldSetPanResponderCapture: (e, gestureState) => true,
             onStartShouldSetPanResponderCapture: () => true,
             onPanResponderGrant: (e, gestureState) => {
                 instance?.controlStage.touchStart(e);
             },
             onPanResponderMove: (e, gestureState) => {
-                instance?.controlStage.touchMove(e);
+                if (gestureState.numberActiveTouches === 2) {
+                    instance?.controlStage.touchScale(e);
+                } else {
+                    instance?.controlStage.touchMove(e);
+                }
             },
             onPanResponderTerminationRequest: (evt, gestureState) => true,
             onPanResponderRelease: (e, gestureState) => {
