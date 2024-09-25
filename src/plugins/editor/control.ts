@@ -47,6 +47,10 @@ export default class ControlStage extends Stage {
     private _touchTranslate(e: GestureResponderEvent) {
         const { locationX, locationY} = e.nativeEvent
         if (this._canMoveCanvas) {
+            // 初始状态禁止移动画布
+            const baseZoom = this.stageConfig.getFitZoom();
+            const currentZoom = this.stageConfig.zoom;
+            if (currentZoom === baseZoom && this.stageConfig.scrollX === 0 && this.stageConfig.scrollY === 0) return;
             // 移动画布
             const scrollX = -(locationX - this._startPoint[0]) + this.stageConfig.scrollX;
             const scrollY = -(locationY - this._startPoint[1]) + this.stageConfig.scrollY;
