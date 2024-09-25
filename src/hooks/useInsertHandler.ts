@@ -13,7 +13,7 @@ interface ITabItem {
 
 export default function useInsertHandler() {
     // 打开相册
-    const openAlbum = (mediaType: "photo" | "video") => {
+    const openAlbum = (mediaType: "photo" | "video", end: () => void) => {
         try {
             launchImageLibrary(
                 {
@@ -37,6 +37,7 @@ export default function useInsertHandler() {
                                     md5
                                 );
                                 instanceStore.editor?.command.executeAddRender([element]);
+                                end();
                             }
                         }
                     }
@@ -47,11 +48,11 @@ export default function useInsertHandler() {
         }
     }
     // 打开相机
-    const actionInsertCommand = (tabItem: ITabItem) => {
+    const actionInsertCommand = (tabItem: ITabItem, end: () => void) => {
         switch (tabItem.command) {
             case "photo":
             case "video":
-                openAlbum(tabItem.command)
+                openAlbum(tabItem.command, end)
                 break;
             case "camera":
                 try {
