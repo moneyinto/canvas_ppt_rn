@@ -9,14 +9,17 @@ import {
     TouchableOpacity,
     View
 } from "react-native";
-import Editor from "../../plugins/editor";
+import { useSelector } from "react-redux";
 import { tabList } from "./config";
 import useInsertHandler from "../../hooks/useInsertHandler";
+import instanceStore from "../../store/instanceStore";
+import { IState } from "../../types/state";
 
-export default function NavHeader({ editor }: { editor: Editor | null }) {
+export default function NavHeader() {
     const [modalVisible, setModalVisible] = useState(false);
     const [translateX] = useState(new Animated.Value(4));
     const [tabIndex, setTabIndex] = useState(0);
+    const cursor = useSelector((state: IState) => state.cursor);
 
     function switchTab(index: number) {
         setTabIndex(index);
@@ -27,7 +30,7 @@ export default function NavHeader({ editor }: { editor: Editor | null }) {
         }).start();
     }
 
-    const { actionInsertCommand } = useInsertHandler()
+    const { actionInsertCommand } = useInsertHandler();
 
     return (
         <>
@@ -43,10 +46,15 @@ export default function NavHeader({ editor }: { editor: Editor | null }) {
                     />
                 </TouchableOpacity>
 
-                <TouchableOpacity>
+                <TouchableOpacity
+                    disabled={cursor <= 0}
+                    onPress={() => {
+                        instanceStore.editor?.history.undo();
+                    }}
+                >
                     <Image
                         source={require("./images/revoke.png")}
-                        style={styles.HeaderIconStyle}
+                        style={[styles.HeaderIconStyle, { opacity: cursor <= 0 ? 0.3 : 1 }]}
                     />
                 </TouchableOpacity>
             </View>
@@ -115,7 +123,9 @@ export default function NavHeader({ editor }: { editor: Editor | null }) {
                                                             : {}
                                                     ]}
                                                     onPress={() =>
-                                                        actionInsertCommand(tabItem)
+                                                        actionInsertCommand(
+                                                            tabItem
+                                                        )
                                                     }
                                                 >
                                                     <Text

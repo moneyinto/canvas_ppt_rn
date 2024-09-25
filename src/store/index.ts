@@ -1,10 +1,8 @@
-import Editor from "../plugins/editor";
+import { configureStore } from "@reduxjs/toolkit";
+import rootReducer from "./reducers";
 
-class Store {
-    editor: Editor | null = null; // 编辑器实例暂存
-    constructor() {
-        
-    }
-}
+const store = configureStore({
+    reducer: rootReducer
+});
 
-export default new Store();
+export default store;

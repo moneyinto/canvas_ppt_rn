@@ -1,7 +1,9 @@
 import { hash, readFile } from "react-native-fs";
 import { launchImageLibrary, launchCamera } from "react-native-image-picker";
 import { createImageElement } from "../utils/create";
-import store from "../store";
+import { IState } from "../types/state";
+import { useSelector } from "react-redux";
+import instanceStore from "../store/instanceStore";
 
 interface ITabItem {
     name: string;
@@ -25,7 +27,7 @@ export default function useInsertHandler() {
                             if (uri) {
                                 const md5 = await hash(uri, "md5")
                                 const base64 = await readFile(uri, "base64")
-                                await store.editor?.history.saveFile(
+                                await instanceStore.editor?.history.saveFile(
                                     md5,
                                     `data:${type};base64,` + base64
                                 );
@@ -34,7 +36,7 @@ export default function useInsertHandler() {
                                     height,
                                     md5
                                 );
-                                store.editor?.command.executeAddRender([element]);
+                                instanceStore.editor?.command.executeAddRender([element]);
                             }
                         }
                     }

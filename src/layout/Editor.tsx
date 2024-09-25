@@ -6,20 +6,23 @@ import {
     TouchableOpacity,
     View
 } from "react-native";
+import { useDispatch } from "react-redux";
 import Canvas from "react-native-canvas";
 import Editor from "../plugins/editor";
 import { slides } from "../mock";
 import NavHeader from "./NavHeader/index";
 import useSlideHandler from "../hooks/useSlideHandler";
-import store from "../store";
+import { ActionType } from "../store/reducers/actionType";
+import instanceStore from "../store/instanceStore";
 
 function LayoutEditor(): JSX.Element {
     const canvasScreenRef = useRef(null);
     const canvasControlRef = useRef(null);
     const ContainerRef = useRef(null);
     let instance: Editor | null = null;
+    const dispatch = useDispatch();
 
-    const { initSlide } = useSlideHandler()
+    const { initSlide } = useSlideHandler();
 
     useEffect(() => {
         const canvasScreen = canvasScreenRef.current as Canvas | null;
@@ -37,9 +40,18 @@ function LayoutEditor(): JSX.Element {
                         slides
                     );
 
-                    store.editor = instance;
+                    instanceStore.editor = instance;
 
-                    initSlide(instance)
+                    instance.listener.onEditChange = (cursor, length, slideId) => {
+                        console.log("============cursor", cursor, length, slideId);
+                        dispatch({
+                            type: ActionType.UPDATE_CURSOR,
+                            cursor
+                        })
+                        // historyLength.value = length;
+                    }
+
+                    initSlide(instance);
                 });
             }, 300);
         }
@@ -66,7 +78,7 @@ function LayoutEditor(): JSX.Element {
 
     return (
         <View style={styles.LayoutContainerStyle}>
-            <NavHeader editor={instance} />
+            <NavHeader />
             <View
                 {...panResponder.panHandlers}
                 style={styles.CanvasContainerStyle}
