@@ -96,7 +96,6 @@ export default class DB {
                     "SELECT id FROM history",
                     [],
                     (_, result) => {
-                        console.log("Table getting all keys successfully", result.rows.raw());
                         resolve(result.rows.raw().map((v) => v.id));
                     },
                     (_, error) => {
@@ -116,7 +115,6 @@ export default class DB {
                     "SELECT id,optionType,slideId,slides FROM history WHERE id = ?",
                     [key],
                     (_, result) => {
-                        console.log("Table getting data successfully");
                         const tableData = result.rows.raw();
                         if (tableData.length > 0) {
                             const data = tableData[0];
@@ -145,9 +143,7 @@ export default class DB {
             tx.executeSql(
                 "INSERT INTO history (optionType, slideId, slides) VALUES (?, ?, ?);",
                 [optionType, slideId, JSON.stringify(slides)],
-                (_, result) => {
-                    console.log("Table setting data successfully");
-                },
+                (_, result) => {},
                 (_, error) => {
                     console.error("Error setting data: " + error);
                 }
@@ -157,14 +153,12 @@ export default class DB {
 
     async getFile(fileId: string): Promise<string> {
         if (!this.db) await this.init();
-        console.log("Table getting file", fileId);
         return new Promise((resolve, reject) => {
             this.db!.transaction((tx) => {
                 tx.executeSql(
                     "SELECT fileId,content FROM file WHERE fileId = ?",
                     [fileId],
                     (_, result) => {
-                        console.log("Table getting file successfully");
                         const list = result.rows.raw();
                         resolve(list.length > 0 ? list[0].content : "");
                     },
@@ -185,9 +179,7 @@ export default class DB {
                 tx.executeSql(
                     "INSERT INTO file (fileId, content) VALUES (?, ?);",
                     [fileId, file],
-                    (_, result) => {
-                        console.log("Table saving file successfully");
-                    },
+                    (_, result) => {},
                     (_, error) => {
                         console.error("Error saving file: " + error);
                     }

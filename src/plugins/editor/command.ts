@@ -137,7 +137,6 @@ export default class Command {
     public executeZoom(unit: number = 0.05) {
         const minZoom = this._stageConfig.getFitZoom();
         const zoom = this.getZoom();
-        console.log("执行scale", zoom, unit);
         if (zoom + unit >= minZoom) {
             this._stageConfig.setZoom(zoom + unit);
         }

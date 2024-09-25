@@ -1,8 +1,6 @@
 import { hash, readFile } from "react-native-fs";
 import { launchImageLibrary, launchCamera } from "react-native-image-picker";
 import { createImageElement } from "../utils/create";
-import { IState } from "../types/state";
-import { useSelector } from "react-redux";
 import instanceStore from "../store/instanceStore";
 
 interface ITabItem {
@@ -23,6 +21,7 @@ export default function useInsertHandler() {
                     if (!response.didCancel && !response.errorCode) {
                         const { assets } = response
                         if (assets?.length) {
+                            // TO DO 限定最大分辨率 超过限制进行等比缩放
                             const { uri, width = 100, height = 100, type } = assets[0]
                             if (uri) {
                                 const md5 = await hash(uri, "md5")

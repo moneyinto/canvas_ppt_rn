@@ -95,7 +95,6 @@ export default class History {
 
     // 撤销
     public async undo() {
-        console.log("撤销xxx", this.cursor)
         if (this.cursor > 0) {
             this.cursor--;
             this._setSlides();
