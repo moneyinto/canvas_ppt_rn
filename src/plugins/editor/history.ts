@@ -41,7 +41,6 @@ export default class History {
         // 获取当前编辑页，存储历史记录时，存入变化的页ID
         const currentSlide = this._stageConfig.getCurrentSlide();
 
-        console.log('setData', currentSlide)
         await this._db.setData(currentSlide!.id, data, optionType);
 
         this._snapshotKeys = (await this._db.getAllKeys() || []) as number[];

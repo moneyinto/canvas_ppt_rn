@@ -55,11 +55,7 @@ function LayoutEditor(): JSX.Element {
                 instance?.controlStage.touchStart(e);
             },
             onPanResponderMove: (e, gestureState) => {
-                if (gestureState.numberActiveTouches === 2) {
-                    instance?.controlStage.touchScale(e);
-                } else {
-                    instance?.controlStage.touchMove(e);
-                }
+                instance?.controlStage.touchMove(e, gestureState);
             },
             onPanResponderTerminationRequest: (evt, gestureState) => true,
             onPanResponderRelease: (e, gestureState) => {
@@ -70,7 +66,7 @@ function LayoutEditor(): JSX.Element {
 
     return (
         <View style={styles.LayoutContainerStyle}>
-            <NavHeader />
+            <NavHeader editor={instance} />
             <View
                 {...panResponder.panHandlers}
                 style={styles.CanvasContainerStyle}

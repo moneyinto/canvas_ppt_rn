@@ -48,6 +48,24 @@ export const debounce = <T extends unknown[]>(
     };
 };
 
+export function throttle <T extends unknown[]>(
+    fn: (...args: T) => void,
+    delay: number
+) {
+    let timerId: NodeJS.Timeout | number | null = null; // 使用闭包的特性，存储timerId
+    return function (...args: T) {
+        // 当timerId没有值时，说明可以执行函数
+        // @ts-ignore
+        const context = this;
+        if (!timerId) {
+            fn.apply(context, args);
+            timerId = setTimeout(() => {
+                timerId = null;
+            }, delay);
+        }
+    };
+};
+
 /**
  * 判断操作系统是否存在某字体
  * @param fontName 字体名

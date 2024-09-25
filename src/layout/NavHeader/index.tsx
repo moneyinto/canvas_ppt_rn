@@ -9,10 +9,11 @@ import {
     TouchableOpacity,
     View
 } from "react-native";
+import Editor from "../../plugins/editor";
 import { tabList } from "./config";
 import useInsertHandler from "../../hooks/useInsertHandler";
 
-export default function NavHeader() {
+export default function NavHeader({ editor }: { editor: Editor | null }) {
     const [modalVisible, setModalVisible] = useState(false);
     const [translateX] = useState(new Animated.Value(4));
     const [tabIndex, setTabIndex] = useState(0);

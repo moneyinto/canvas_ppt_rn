@@ -8,7 +8,6 @@ export default function useSlideHandler() {
     const initSlide = async (instance: Editor) => {
         // 初始化幻灯片
         const slides = await instance.history.getHistorySnapshot();
-        console.log("initSlide", slides[0].elements);
         instance.stageConfig.setSlides(slides);
         // historyCursor.value = instance.value.history.cursor;
         // historyLength.value = historyCursor.value + 1;
