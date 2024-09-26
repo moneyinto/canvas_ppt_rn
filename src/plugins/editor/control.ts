@@ -4,13 +4,17 @@ import StageConfig from "../stage/config";
 import { GestureResponderEvent, PanResponderGestureState } from "react-native";
 import Command from "./command";
 import DB from "../../utils/db";
-import { throttle } from "../../utils";
+import { debounce, throttle } from "../../utils";
 
 export default class ControlStage extends Stage {
     private _command: Command;
     private _scaleGustureCenter: { x: number; y: number } | null = null; // 双指缩放中心
     private _originScaleLength: number = 0; // 双指缩放初始距离
     private _canMoveCanvas = true;
+    private _activeTouchCount = 0;
+    private _isTouchMove = false;
+    private _touchEndTime = 0;
+    private _isDoubleTap = false;
     private _startPoint: [number, number] = [0, 0];
     constructor(
         canvas: Canvas,
@@ -23,25 +27,56 @@ export default class ControlStage extends Stage {
 
         this._touchTranslate = throttle(this._touchTranslate.bind(this), 30);
         this._touchScale = throttle(this._touchScale.bind(this), 100);
+        // 单击生效延迟300，移除双击的可能
+        this._singleTap = debounce(this._singleTap.bind(this), 300);
+        // 双击生效延迟300，移除超多两次点击引起多次触发问题
+        this._doubleTap = debounce(this._doubleTap.bind(this), 300);
     }
 
-    public touchStart(e: GestureResponderEvent) {
+    public touchStart(e: GestureResponderEvent, gestureState: PanResponderGestureState) {
         const { locationX, locationY} = e.nativeEvent
         this._scaleGustureCenter = null;
         this._originScaleLength = 0;
         this._startPoint = [locationX, locationY];
+        this._activeTouchCount = gestureState.numberActiveTouches;
     }
 
     public touchMove(e: GestureResponderEvent, gestureState: PanResponderGestureState) {
         if (gestureState.numberActiveTouches === 2) {
             this._touchScale(e);
         } else {
+            this._isTouchMove = true;
             this._touchTranslate(e);
         }
     }
 
-    public touchEnd(e: GestureResponderEvent) {
-        console.log("TouchEnd");
+    public touchEnd(e: GestureResponderEvent, gestureState: PanResponderGestureState) {
+        console.log("TouchEnd", gestureState);
+        if (this._activeTouchCount === 1 && !this._isTouchMove) {
+            // 单指且没有触发移动 视为点击
+            const touchEndTime = Date.now();
+            if (touchEndTime - this._touchEndTime < 250) {
+                // Double tap detected
+                this._isDoubleTap = true;
+                this._doubleTap();
+            } else {
+                // Single tap detected
+                this._singleTap();
+                this._touchEndTime = touchEndTime;
+            }
+        }
+    }
+
+    private _doubleTap() {
+        console.log("Double Tap")
+    }
+
+    private _singleTap() {
+        if (!this._isDoubleTap) {
+            console.log("Single Tap")
+        } else {
+            this._isDoubleTap = false;
+        }
     }
 
     private _touchTranslate(e: GestureResponderEvent) {

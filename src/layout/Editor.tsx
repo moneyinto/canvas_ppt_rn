@@ -64,14 +64,14 @@ function LayoutEditor(): JSX.Element {
             onMoveShouldSetPanResponderCapture: (e, gestureState) => true,
             onStartShouldSetPanResponderCapture: () => true,
             onPanResponderGrant: (e, gestureState) => {
-                instance?.controlStage.touchStart(e);
+                instance?.controlStage.touchStart(e, gestureState);
             },
             onPanResponderMove: (e, gestureState) => {
                 instance?.controlStage.touchMove(e, gestureState);
             },
             onPanResponderTerminationRequest: (evt, gestureState) => true,
             onPanResponderRelease: (e, gestureState) => {
-                instance?.controlStage.touchEnd(e);
+                instance?.controlStage.touchEnd(e, gestureState);
             }
         })
     ).current;
