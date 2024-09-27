@@ -18,6 +18,8 @@ export default class ControlStage extends Stage {
     private _needAddHistory = false; // 是否需要添加历史记录
     private _activeTouchCount = 0;
     private _isTouchMove = false;
+    private _isLongPress = false; // 是否长按
+    private _longPressTimer: NodeJS.Timeout | number = 0;
     private _touchEndTime = 0;
     private _isDoubleTap = false;
     private _startPoint: [number, number] = [0, 0];
@@ -45,21 +47,12 @@ export default class ControlStage extends Stage {
         this._startPoint = [locationX, locationY];
         this._activeTouchCount = gestureState.numberActiveTouches;
 
-        if (this.stageConfig.operateElements.length) {
-            const { left, top } = this.stageConfig.getTouchPosition(this._startPoint);
-            const currentSlide = this.stageConfig.getCurrentSlide();
-            const operateElement = this.stageConfig.getTouchElement(
-                left,
-                top,
-                this.ctx,
-                currentSlide?.elements || []
-            );
+        this._checkTouchMove();
 
-            this._canMoveElements = !!this.stageConfig.operateElements.find((element) => element.id === operateElement?.id);
-        }
-
-        // 不可以移动元素就是可以移动画布
-        this._canMoveCanvas = !this._canMoveElements;
+        // 长按
+        this._longPressTimer = setTimeout(() => {
+            this._longPress()
+        }, 500)
     }
 
     public touchMove(e: GestureResponderEvent, gestureState: PanResponderGestureState) {
@@ -69,10 +62,11 @@ export default class ControlStage extends Stage {
             this._isTouchMove = true;
             this._touchTranslate(e);
         }
+        clearTimeout(this._longPressTimer);
     }
 
     public touchEnd(e: GestureResponderEvent, gestureState: PanResponderGestureState) {
-        if (this._activeTouchCount === 1 && !this._isTouchMove) {
+        if (this._activeTouchCount === 1 && !this._isTouchMove && !this._isLongPress) {
             // 单指且没有触发移动 视为点击
             const touchEndTime = Date.now();
             if (touchEndTime - this._touchEndTime < 250) {
@@ -95,17 +89,45 @@ export default class ControlStage extends Stage {
             );
         }
 
+        clearTimeout(this._longPressTimer);
         this._isTouchMove = false;
         this._canMoveCanvas = false;
         this._canMoveElements = false;
         this._needAddHistory = false;
     }
 
+    private _checkTouchMove() {
+        // 判断是移动画布还是移动元素
+        if (this.stageConfig.operateElements.length) {
+            const { left, top } = this.stageConfig.getTouchPosition(this._startPoint);
+            const currentSlide = this.stageConfig.getCurrentSlide();
+            const operateElement = this.stageConfig.getTouchElement(
+                left,
+                top,
+                this.ctx,
+                currentSlide?.elements || []
+            );
+
+            this._canMoveElements = !!this.stageConfig.operateElements.find((element) => element.id === operateElement?.id);
+        }
+
+        // 不可以移动元素就是可以移动画布
+        this._canMoveCanvas = !this._canMoveElements;
+    }
+
+    private _longPress() {
+        console.log("Long Press")
+        // 触发单击效果 no debounce
+        this._singleTapAction();
+        // 判断是否可以移动元素
+        this._checkTouchMove();
+    }
+
     private _doubleTap() {
         console.log("Double Tap")
     }
 
-    private _singleTap() {
+    private _singleTapAction() {
         if (!this._isDoubleTap) {
             const { left, top } = this.stageConfig.getTouchPosition(this._startPoint);
             const currentSlide = this.stageConfig.getCurrentSlide();
@@ -131,6 +153,11 @@ export default class ControlStage extends Stage {
         } else {
             this._isDoubleTap = false;
         }
+    }
+
+    private _singleTap() {
+        // debounce
+        this._singleTapAction();
     }
 
     private _moveCanvas(locationX: number, locationY: number) {
