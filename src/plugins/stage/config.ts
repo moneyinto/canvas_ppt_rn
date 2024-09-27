@@ -1,3 +1,4 @@
+import { CanvasRenderingContext2D, Path2D } from "react-native-canvas";
 import { baseFontConfig } from "../../config/font";
 import { VIEWPORT_SIZE, VIEWRATIO } from "../../config/stage";
 import { IPPTElement, IPPTShapeElement, IPPTTableCell, IPPTTableElement, IPPTTextElement } from "../../types/element";
@@ -5,6 +6,8 @@ import { IFontConfig, IFontData, ILineData } from "../../types/font";
 import { IPPTAnimation, IPPTTurningAnimation, ISlide, ISlideBackground } from "../../types/slide";
 import { deepClone } from "../../utils";
 import Listener from "../editor/listener";
+import { IRectParameter } from "../../types";
+import { getShapePath } from "../../utils/shape";
 
 export const TEXT_MARGIN = 5;
 
@@ -156,6 +159,117 @@ export default class StageConfig {
         const y = (height - stageHeight) / 2 - this.scrollY;
 
         return { x, y, stageWidth, stageHeight };
+    }
+
+    public getTouchPosition([locationX, locationY]: [number, number]) {
+        // 获取触摸点在画布坐标系中的坐标点位置
+        const zoom = this.zoom;
+
+        const { x, y } = this.getStageArea();
+
+        const left = (locationX - x) / zoom;
+        const top = (locationY - y) / zoom;
+
+        return { left, top };
+    }
+
+    public checkPointNearLine(
+        point: [number, number],
+        start: [number, number],
+        end: [number, number]
+    ) {
+        const distance = 0.2;
+        const A = start;
+        const B = end;
+        // 与A点的距离
+        const rA = Math.hypot(A[0] - point[0], A[1] - point[1]);
+        // 与B点的距离
+        const rB = Math.hypot(B[0] - point[0], B[1] - point[1]);
+        // AB点距离
+        const rAB = Math.hypot(A[0] - B[0], A[1] - B[1]);
+        // 判断条件 -- 与A点距离 与B点距离 两者之和 与 AB点距离 的差 小于 distance
+        // 三个条件满足一个即为符合要求的元素
+        return rA + rB - rAB < distance;
+    }
+
+    public checkPointInRect(
+        x: number,
+        y: number,
+        rect: IRectParameter,
+        cx: number,
+        cy: number,
+        angle: number
+    ) {
+        const translatePoint = this.rotate(x, y, cx, cy, -angle);
+        const minX = rect[0];
+        const maxX = rect[0] + rect[2];
+        const minY = rect[1];
+        const maxY = rect[1] + rect[3];
+        return (
+            translatePoint[0] > minX &&
+            translatePoint[0] < maxX &&
+            translatePoint[1] > minY &&
+            translatePoint[1] < maxY
+        );
+    }
+
+    public getTouchElement(left: number, top: number, ctx: CanvasRenderingContext2D, checkElements: IPPTElement[]) {
+        // 过滤锁定元素
+        const elements = (deepClone(checkElements) as IPPTElement[]).filter(element => !element.lock);
+        return elements.reverse().find((element) => {
+            if (element.type === "line") {
+                return this.checkPointNearLine(
+                    [left, top],
+                    [
+                        element.left + element.start[0],
+                        element.top + element.start[1]
+                    ],
+                    [
+                        element.left + element.end[0],
+                        element.top + element.end[1]
+                    ]
+                );
+            } else {
+                const cx = element.left + element.width / 2;
+                const cy = element.top + element.height / 2;
+                const rect: IRectParameter = [
+                    element.left,
+                    element.top,
+                    element.width,
+                    element.height
+                ];
+                const isInRect = this.checkPointInRect(
+                    left,
+                    top,
+                    rect,
+                    cx,
+                    cy,
+                    (element.rotate / 180) * Math.PI
+                );
+
+                if (element.type === "shape" && isInRect) {
+                    const path = getShapePath(element.shape, element.width, element.height) as Path2D;
+                    ctx.save();
+                    // 缩放画布
+                    // ctx.scale(this.zoom, this.zoom);
+                    const { x, y } = this.getStageOrigin();
+                    const ox = x + element.left + element.width / 2;
+                    const oy = y + element.top + element.height / 2;
+
+                    // 平移坐标原点
+                    ctx.translate(ox, oy);
+                    // 旋转画布
+                    ctx.rotate((element.rotate / 180) * Math.PI);
+                    // 水平垂直翻转
+                    ctx.scale(element.flipH || 1, element.flipV || 1);
+                    const isPointInPath = ctx.isPointInPath(left + x, top + y, 'nonzero', path);
+                    ctx.restore();
+                    return isPointInPath;
+                }
+
+                return isInRect;
+            }
+        });
     }
 
     // 获取画布偏移量
@@ -453,6 +567,87 @@ export default class StageConfig {
                 this._listener?.onUpdateThumbnailSlide(slide);
             });
         }
+    }
+
+    public getRenderSelect(
+        x: number,
+        y: number,
+        lineData: ILineData,
+        index: number,
+        selectArea: [number, number, number, number],
+        element: IPPTTextElement | IPPTShapeElement | IPPTTableElement,
+        tableCellPosition?: [number, number]
+    ) {
+        let textElement: IPPTTextElement | IPPTShapeElement | IPPTTableCell | null = null;
+        if (element.type === "table" && tableCellPosition) {
+            const tableCell = element.data[tableCellPosition[0]][tableCellPosition[1]];
+            textElement = tableCell;
+        } else {
+            textElement = element as IPPTTextElement | IPPTShapeElement;
+        }
+
+        if (index >= selectArea[1] && index <= selectArea[3]) {
+            let startX = 0;
+            let endX = 0;
+            if (selectArea[1] === selectArea[3]) {
+                // 仅选中该行
+                startX = selectArea[0];
+                endX = selectArea[2];
+            } else if (selectArea[1] === index) {
+                // 选中的第一行
+                startX = selectArea[0];
+                endX = lineData.texts.length;
+            } else if (index < selectArea[3]) {
+                // 选中中间的行
+                startX = 0;
+                endX = lineData.texts.length;
+            } else if (index === selectArea[3]) {
+                // 选中的最后一行
+                startX = 0;
+                endX = selectArea[2];
+            }
+
+            if (startX === endX) return undefined;
+
+            // 存在选中区域
+            if (startX > 0) {
+                x += lineData.texts
+                    .slice(0, startX)
+                    .map((text) => text.width)
+                    .reduce((acr, cur) => {
+                        return acr + cur + textElement!.wordSpace;
+                    });
+            }
+
+            const width = lineData.texts
+                .slice(startX, endX)
+                .map((text) => text.width)
+                .reduce((acr, cur) => {
+                    return acr + cur + textElement!.wordSpace;
+                });
+
+            let offsetX = this.getAlignOffsetX(lineData, element);
+
+            let offsetY = 0;
+            if (element.type === "shape" || element.type === "table") {
+                const height = this.getTextHeight(element, tableCellPosition);
+                offsetY = (element.height - height) / 2;
+                if (element.type === "table" && tableCellPosition) {
+                    const [row, col] = tableCellPosition;
+                    const { tableCellHeight, tableCellLeft, tableCellTop } = this.getTableCellData(element, row, col);
+                    offsetX += tableCellLeft;
+                    offsetY = tableCellHeight / 2 - height / 2 + tableCellTop;
+                }
+            }
+
+            return {
+                x: x + offsetX,
+                y: y + offsetY,
+                width: width + textElement!.wordSpace,
+                height: lineData.height * textElement!.lineHeight
+            };
+        }
+        return undefined;
     }
 
     public getSelectArea(selectArea: [number, number, number, number], element: IPPTTextElement | IPPTShapeElement | IPPTTableElement) {

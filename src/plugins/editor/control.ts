@@ -1,10 +1,13 @@
 import Canvas from "react-native-canvas";
 import Stage from "../stage";
-import StageConfig from "../stage/config";
+import StageConfig, { TEXT_MARGIN } from "../stage/config";
 import { GestureResponderEvent, PanResponderGestureState } from "react-native";
 import Command from "./command";
 import DB from "../../utils/db";
 import { debounce, throttle } from "../../utils";
+import { IPPTElement } from "../../types/element";
+import { THEME_COLOR } from "../../config/stage";
+import { IRectParameter, IRects } from "../../types";
 
 export default class ControlStage extends Stage {
     private _command: Command;
@@ -73,7 +76,30 @@ export default class ControlStage extends Stage {
 
     private _singleTap() {
         if (!this._isDoubleTap) {
-            console.log("Single Tap")
+            const { left, top } = this.stageConfig.getTouchPosition(this._startPoint);
+            const currentSlide = this.stageConfig.getCurrentSlide();
+            const operateElement = this.stageConfig.getTouchElement(
+                left,
+                top,
+                this.ctx,
+                currentSlide?.elements || []
+            );
+            console.log("===", operateElement)
+            this.stageConfig.setOperateElement(operateElement, false);
+            this.stageConfig.resetCheckDrawView();
+            this.stageConfig.tableEditElementID = "";
+            this.stageConfig.tableSelectCells = null;
+            if (operateElement) {
+                // this._cursor.hideCursor();
+                this.stageConfig.textFocus = false;
+                this.stageConfig.textFocusElementId = "";
+                this.resetDrawOprate();
+                // this._canMoveElement = true;
+            } else {
+                // this._canMoveElement = false;
+                this.clear();
+            }
+            console.log("Single Tap", left, top)
         } else {
             this._isDoubleTap = false;
         }
@@ -118,10 +144,262 @@ export default class ControlStage extends Stage {
         this._originScaleLength = currentLength;
     }
 
+    private _getElementLinePoints(
+        x: number,
+        y: number,
+        end: [number, number],
+        rectWidth: number
+    ) {
+        const START: IRectParameter = [
+            x - rectWidth,
+            y - rectWidth / 2,
+            rectWidth,
+            rectWidth
+        ];
+
+        const END: IRectParameter = [
+            x + end[0],
+            y + end[1] - rectWidth / 2,
+            rectWidth,
+            rectWidth
+        ];
+
+        return {
+            START,
+            END
+        };
+    }
+
+    /**
+     * 考虑要不要做个map的换成 ？？？？？？？？？？？？？？？？？？？？？
+     * @param param0 获取选中区域的九点区域坐标
+     * @returns
+     */
+    private _getElementResizePoints(
+        x: number,
+        y: number,
+        elementWidth: number,
+        elementHeight: number,
+        dashedLinePadding: number,
+        resizeRectWidth: number
+    ) {
+        const LEFT_X = x - dashedLinePadding - resizeRectWidth;
+        const RIGH_X = x + elementWidth + dashedLinePadding;
+        const CENTER_X = (RIGH_X + LEFT_X) / 2;
+        const TOP_Y = y - dashedLinePadding - resizeRectWidth;
+        const BOTTOM_Y = y + elementHeight + dashedLinePadding;
+        const CENTER_Y = (BOTTOM_Y + TOP_Y) / 2;
+
+        const LEFT_TOP: IRectParameter = [
+            LEFT_X,
+            TOP_Y,
+            resizeRectWidth,
+            resizeRectWidth
+        ];
+        const LEFT: IRectParameter = [
+            LEFT_X,
+            CENTER_Y,
+            resizeRectWidth,
+            resizeRectWidth
+        ];
+        const LEFT_BOTTOM: IRectParameter = [
+            LEFT_X,
+            BOTTOM_Y,
+            resizeRectWidth,
+            resizeRectWidth
+        ];
+        const TOP: IRectParameter = [
+            CENTER_X,
+            TOP_Y,
+            resizeRectWidth,
+            resizeRectWidth
+        ];
+        const BOTTOM: IRectParameter = [
+            CENTER_X,
+            BOTTOM_Y,
+            resizeRectWidth,
+            resizeRectWidth
+        ];
+        const RIGHT_TOP: IRectParameter = [
+            RIGH_X,
+            TOP_Y,
+            resizeRectWidth,
+            resizeRectWidth
+        ];
+        const RIGHT: IRectParameter = [
+            RIGH_X,
+            CENTER_Y,
+            resizeRectWidth,
+            resizeRectWidth
+        ];
+        const RIGHT_BOTTOM: IRectParameter = [
+            RIGH_X,
+            BOTTOM_Y,
+            resizeRectWidth,
+            resizeRectWidth
+        ];
+        const ANGLE: IRectParameter = [
+            CENTER_X,
+            TOP_Y - resizeRectWidth * 2,
+            resizeRectWidth,
+            resizeRectWidth
+        ];
+        return {
+            LEFT_TOP,
+            LEFT,
+            LEFT_BOTTOM,
+            TOP,
+            BOTTOM,
+            RIGHT_TOP,
+            RIGHT,
+            RIGHT_BOTTOM,
+            ANGLE
+        };
+    }
+
+    private _renderRange({ x, y, width, height }: any) {
+        this.ctx.save();
+        this.ctx.globalAlpha = 0.5;
+        this.ctx.fillStyle = "#AECBFA";
+        this.ctx.fillRect(x, y, width, height);
+        this.ctx.restore();
+    }
+
+    private _drawOprate(elements: IPPTElement[]) {
+        const zoom = this.stageConfig.zoom;
+        if (elements.length === 0) return;
+        const { x, y } = this.stageConfig.getStageOrigin();
+
+        for (const element of elements) {
+            this.ctx.save();
+            // 缩放画布
+            this.ctx.scale(zoom, zoom);
+
+            if (element.type === "line") {
+                this.ctx.translate(x, y);
+
+                this.ctx.fillStyle = "#ffffff";
+                this.ctx.strokeStyle = THEME_COLOR;
+                this.ctx.lineWidth = 1 / zoom;
+                const dashWidth = 8 / zoom;
+                const rects: IRects = this._getElementLinePoints(
+                    element.left,
+                    element.top,
+                    element.end,
+                    dashWidth
+                );
+                this.ctx.fillStyle = "#ffffff";
+                this.ctx.strokeStyle = THEME_COLOR;
+                this.ctx.lineWidth = 1 / zoom;
+                for (const key in rects) {
+                    this.ctx.fillRect(...rects[key]);
+                    this.ctx.strokeRect(...rects[key]);
+                }
+            } else {
+                const sx = x + element.left;
+                const sy = y + element.top;
+
+                // 平移原点到元素起始点
+                this.ctx.translate(sx, sy);
+                const selectArea = this.stageConfig.selectArea;
+                if (
+                    selectArea &&
+                    this.stageConfig.textFocus &&
+                    (element.type === "text" || element.type === "shape" || element.type === "table")
+                ) {
+                    // 存在文本选中状态
+                    const tableSelectCells = this.stageConfig.tableSelectCells;
+                    let tableCellPosition: [number, number] | undefined;
+                    if (tableSelectCells) {
+                        const startRow = Math.min(tableSelectCells[0][0], tableSelectCells[1][0]);
+                        const startCol = Math.min(tableSelectCells[0][1], tableSelectCells[1][1]);
+                        const endRow = Math.max(tableSelectCells[0][0], tableSelectCells[1][0]);
+                        const endCol = Math.max(tableSelectCells[0][1], tableSelectCells[1][1]);
+                        if (startRow === endRow && startCol === endCol) {
+                            tableCellPosition = [startRow, startCol];
+                        }
+                    }
+                    const lineTexts = this.stageConfig.getRenderContent(element, tableCellPosition);
+                    const x = TEXT_MARGIN;
+                    let y = TEXT_MARGIN;
+                    let textLineHeight = 2;
+                    if (element.type === "table") {
+                        if (tableCellPosition) {
+                            textLineHeight = element.data[tableCellPosition[0]][tableCellPosition[1]].lineHeight;
+                        }
+                    } else {
+                        textLineHeight = element.lineHeight;
+                    }
+
+                    lineTexts.forEach((lineData, index) => {
+                        const lineHeight = lineData.height * textLineHeight;
+                        const rangeRecord = this.stageConfig.getRenderSelect(
+                            x,
+                            y,
+                            lineData,
+                            index,
+                            selectArea,
+                            element,
+                            tableCellPosition
+                        );
+                        if (rangeRecord) this._renderRange(rangeRecord);
+                        y = y + lineHeight;
+                    });
+                }
+
+                // 平移坐标原点到元素中心
+                this.ctx.translate(element.width / 2, element.height / 2);
+                // 水平垂直翻转
+                const isText = element.type === "text";
+                // 旋转画布
+                this.ctx.rotate((element.rotate / 180) * Math.PI);
+
+                this.ctx.strokeStyle = THEME_COLOR;
+                this.ctx.lineWidth = 1 / zoom;
+                // 增加选中框与元素的间隙距离
+                const margin = 1;
+                const offsetX = -element.width / 2 - margin;
+                const offsetY = -element.height / 2 - margin;
+                this.ctx.strokeRect(
+                    offsetX,
+                    offsetY,
+                    element.width + margin * 2,
+                    element.height + margin * 2
+                );
+
+                const dashedLinePadding = 0 + margin / zoom;
+                const dashWidth = 8 / zoom;
+
+                const rects: IRects = this._getElementResizePoints(
+                    offsetX,
+                    offsetY,
+                    element.width + margin * 2,
+                    element.height + margin * 2,
+                    dashedLinePadding,
+                    dashWidth
+                );
+                this.ctx.fillStyle = "#ffffff";
+                this.ctx.strokeStyle = THEME_COLOR;
+                this.ctx.lineWidth = 1 / zoom;
+                for (const key in rects) {
+                    if (
+                        isText &&
+                        key !== "LEFT" &&
+                        key !== "RIGHT" &&
+                        key !== "ANGLE"
+                    ) continue;
+                    this.ctx.fillRect(...rects[key]);
+                    this.ctx.strokeRect(...rects[key]);
+                }
+            }
+            this.ctx.restore();
+        }
+    }
+
     public resetDrawOprate() {
         this.clear();
-        // const elements = this.stageConfig.operateElements;
-        // if (elements.length === 0) return;
-        // this._drawOprate(elements);
+        const elements = this.stageConfig.operateElements;
+        if (elements.length === 0) return;
+        this._drawOprate(elements);
     }
 }
