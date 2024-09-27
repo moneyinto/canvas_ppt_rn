@@ -74,7 +74,7 @@ export default class Picture {
         // 动画
         this._actionAnimation.setElementStatus(element);
 
-        const path = getShapePath(SHAPE_TYPE.RECT, element.width, element.height) as Path2D;
+        const path = getShapePath(SHAPE_TYPE.RECT, element.width, element.height, this._canvas) as Path2D;
         if (element.fill) {
             this._fill.draw(element.fill, path);
         }

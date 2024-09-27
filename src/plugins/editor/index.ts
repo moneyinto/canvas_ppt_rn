@@ -54,6 +54,8 @@ export default class Editor {
         // 创建操作画板
         this.controlStage = new ControlStage(canvasControl, this.stageConfig, db, this.command);
 
+        this.stageConfig.canvasControl = canvasControl;
+
         // this._container = container;
         // this._resizeObserver = new ResizeObserver(throttleRAF(this._reset.bind(this)));
         // this._resizeObserver.observe(container);

@@ -1,4 +1,4 @@
-import { CanvasRenderingContext2D, Path2D } from "react-native-canvas";
+import Canvas, { CanvasRenderingContext2D, Path2D } from "react-native-canvas";
 import { baseFontConfig } from "../../config/font";
 import { VIEWPORT_SIZE, VIEWRATIO } from "../../config/stage";
 import { IPPTElement, IPPTShapeElement, IPPTTableCell, IPPTTableElement, IPPTTextElement } from "../../types/element";
@@ -16,6 +16,7 @@ export default class StageConfig {
     public scrollY: number;
     public zoom: number;
     public canMove: boolean;
+    public canvasControl: Canvas | undefined;
 
     public operateElements: IPPTElement[]; // 选中操作元素
 
@@ -248,10 +249,9 @@ export default class StageConfig {
                 );
 
                 if (element.type === "shape" && isInRect) {
-                    const path = getShapePath(element.shape, element.width, element.height) as Path2D;
+                    const path = getShapePath(element.shape, element.width, element.height, this.canvasControl) as Path2D;
                     ctx.save();
-                    // 缩放画布
-                    // ctx.scale(this.zoom, this.zoom);
+
                     const { x, y } = this.getStageOrigin();
                     const ox = x + element.left + element.width / 2;
                     const oy = y + element.top + element.height / 2;
@@ -262,7 +262,10 @@ export default class StageConfig {
                     ctx.rotate((element.rotate / 180) * Math.PI);
                     // 水平垂直翻转
                     ctx.scale(element.flipH || 1, element.flipV || 1);
-                    const isPointInPath = ctx.isPointInPath(left + x, top + y, 'nonzero', path);
+                    // ctx.fill(path);
+                    // @ts-ignore
+                    const isPointInPath = ctx.isPointInPath(path, left + x, top + y);
+                    console.log("isPointInPath", JSON.stringify(isPointInPath));
                     ctx.restore();
                     return isPointInPath;
                 }

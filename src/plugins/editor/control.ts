@@ -4,7 +4,7 @@ import StageConfig, { TEXT_MARGIN } from "../stage/config";
 import { GestureResponderEvent, PanResponderGestureState } from "react-native";
 import Command from "./command";
 import DB from "../../utils/db";
-import { debounce, throttle } from "../../utils";
+import { debounce, deepClone, throttle } from "../../utils";
 import { IPPTElement } from "../../types/element";
 import { THEME_COLOR } from "../../config/stage";
 import { IRectParameter, IRects } from "../../types";
@@ -13,7 +13,9 @@ export default class ControlStage extends Stage {
     private _command: Command;
     private _scaleGustureCenter: { x: number; y: number } | null = null; // 双指缩放中心
     private _originScaleLength: number = 0; // 双指缩放初始距离
-    private _canMoveCanvas = true;
+    private _canMoveCanvas = false; // 是否可以移动画布
+    private _canMoveElements = false; // 是否可以移动元素
+    private _needAddHistory = false; // 是否需要添加历史记录
     private _activeTouchCount = 0;
     private _isTouchMove = false;
     private _touchEndTime = 0;
@@ -42,6 +44,22 @@ export default class ControlStage extends Stage {
         this._originScaleLength = 0;
         this._startPoint = [locationX, locationY];
         this._activeTouchCount = gestureState.numberActiveTouches;
+
+        if (this.stageConfig.operateElements.length) {
+            const { left, top } = this.stageConfig.getTouchPosition(this._startPoint);
+            const currentSlide = this.stageConfig.getCurrentSlide();
+            const operateElement = this.stageConfig.getTouchElement(
+                left,
+                top,
+                this.ctx,
+                currentSlide?.elements || []
+            );
+
+            this._canMoveElements = !!this.stageConfig.operateElements.find((element) => element.id === operateElement?.id);
+        }
+
+        // 不可以移动元素就是可以移动画布
+        this._canMoveCanvas = !this._canMoveElements;
     }
 
     public touchMove(e: GestureResponderEvent, gestureState: PanResponderGestureState) {
@@ -54,7 +72,6 @@ export default class ControlStage extends Stage {
     }
 
     public touchEnd(e: GestureResponderEvent, gestureState: PanResponderGestureState) {
-        console.log("TouchEnd", gestureState);
         if (this._activeTouchCount === 1 && !this._isTouchMove) {
             // 单指且没有触发移动 视为点击
             const touchEndTime = Date.now();
@@ -68,6 +85,20 @@ export default class ControlStage extends Stage {
                 this._touchEndTime = touchEndTime;
             }
         }
+
+        if (this._needAddHistory && this._activeTouchCount === 1) {
+            const operateElements = this.stageConfig.operateElements;
+            // 更改silde中对应的元素数据
+            this._command.executeUpdateRender(
+                deepClone(operateElements),
+                true
+            );
+        }
+
+        this._isTouchMove = false;
+        this._canMoveCanvas = false;
+        this._canMoveElements = false;
+        this._needAddHistory = false;
     }
 
     private _doubleTap() {
@@ -84,7 +115,6 @@ export default class ControlStage extends Stage {
                 this.ctx,
                 currentSlide?.elements || []
             );
-            console.log("===", operateElement)
             this.stageConfig.setOperateElement(operateElement, false);
             this.stageConfig.resetCheckDrawView();
             this.stageConfig.tableEditElementID = "";
@@ -94,9 +124,7 @@ export default class ControlStage extends Stage {
                 this.stageConfig.textFocus = false;
                 this.stageConfig.textFocusElementId = "";
                 this.resetDrawOprate();
-                // this._canMoveElement = true;
             } else {
-                // this._canMoveElement = false;
                 this.clear();
             }
             console.log("Single Tap", left, top)
@@ -105,18 +133,47 @@ export default class ControlStage extends Stage {
         }
     }
 
+    private _moveCanvas(locationX: number, locationY: number) {
+        // 初始状态禁止移动画布
+        const baseZoom = this.stageConfig.getFitZoom();
+        const currentZoom = this.stageConfig.zoom;
+        if (currentZoom === baseZoom && this.stageConfig.scrollX === 0 && this.stageConfig.scrollY === 0) return;
+        // 移动画布
+        const scrollX = -(locationX - this._startPoint[0]) + this.stageConfig.scrollX;
+        const scrollY = -(locationY - this._startPoint[1]) + this.stageConfig.scrollY;
+        this._startPoint = [locationX, locationY];
+        this.stageConfig.setScroll(scrollX, scrollY);
+    }
+
+    private _moveElements(locationX: number, locationY: number) {
+        const operateElements = this.stageConfig.operateElements;
+        const zoom = this.stageConfig.zoom;
+        const moveX = (locationX - this._startPoint[0]) / zoom;
+        const moveY = (locationY - this._startPoint[1]) / zoom;
+
+        const elements: IPPTElement[] = [];
+        for (const operateElement of operateElements) {
+            const newElement = {
+                ...operateElement,
+                left: operateElement.left + moveX,
+                top: operateElement.top + moveY
+            };
+
+            elements.push(newElement);
+        }
+
+        this._command.executeUpdateRender(elements);
+        this._startPoint = [locationX, locationY];
+    }
+
     private _touchTranslate(e: GestureResponderEvent) {
         const { locationX, locationY} = e.nativeEvent
         if (this._canMoveCanvas) {
-            // 初始状态禁止移动画布
-            const baseZoom = this.stageConfig.getFitZoom();
-            const currentZoom = this.stageConfig.zoom;
-            if (currentZoom === baseZoom && this.stageConfig.scrollX === 0 && this.stageConfig.scrollY === 0) return;
-            // 移动画布
-            const scrollX = -(locationX - this._startPoint[0]) + this.stageConfig.scrollX;
-            const scrollY = -(locationY - this._startPoint[1]) + this.stageConfig.scrollY;
-            this._startPoint = [locationX, locationY];
-            this.stageConfig.setScroll(scrollX, scrollY);
+            this._moveCanvas(locationX, locationY);
+        } else if (this._canMoveElements) {
+            // 移动元素
+            this._moveElements(locationX, locationY);
+            this._needAddHistory = true;
         }
     }
 
