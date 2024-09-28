@@ -8,9 +8,11 @@ import { debounce, deepClone, throttle } from "../../utils";
 import { IPPTElement } from "../../types/element";
 import { THEME_COLOR } from "../../config/stage";
 import { IRectParameter, IRects } from "../../types";
+import Listener from "./listener";
 
 export default class ControlStage extends Stage {
     private _command: Command;
+    private _listener: Listener;
     private _scaleGustureCenter: { x: number; y: number } | null = null; // 双指缩放中心
     private _originScaleLength: number = 0; // 双指缩放初始距离
     private _canMoveCanvas = false; // 是否可以移动画布
@@ -27,10 +29,12 @@ export default class ControlStage extends Stage {
         canvas: Canvas,
         stageConfig: StageConfig,
         db: DB,
-        command: Command
+        command: Command,
+        listener: Listener
     ) {
         super(canvas, stageConfig, db);
         this._command = command;
+        this._listener = listener;
 
         this._touchTranslate = throttle(this._touchTranslate.bind(this), 30);
         this._touchScale = throttle(this._touchScale.bind(this), 100);
@@ -40,8 +44,11 @@ export default class ControlStage extends Stage {
         this._doubleTap = debounce(this._doubleTap.bind(this), 300);
     }
 
-    public touchStart(e: GestureResponderEvent, gestureState: PanResponderGestureState) {
-        const { locationX, locationY} = e.nativeEvent
+    public touchStart(
+        e: GestureResponderEvent,
+        gestureState: PanResponderGestureState
+    ) {
+        const { locationX, locationY } = e.nativeEvent;
         this._scaleGustureCenter = null;
         this._originScaleLength = 0;
         this._startPoint = [locationX, locationY];
@@ -49,13 +56,19 @@ export default class ControlStage extends Stage {
 
         this._checkTouchMove();
 
+        // 移除menu
+        this._listener?.onMenuVisibleChange(false, "canvas", [0, 0]);
+
         // 长按
         this._longPressTimer = setTimeout(() => {
-            this._longPress()
-        }, 500)
+            this._longPress();
+        }, 500);
     }
 
-    public touchMove(e: GestureResponderEvent, gestureState: PanResponderGestureState) {
+    public touchMove(
+        e: GestureResponderEvent,
+        gestureState: PanResponderGestureState
+    ) {
         if (gestureState.numberActiveTouches === 2) {
             this._touchScale(e);
         } else {
@@ -63,10 +76,20 @@ export default class ControlStage extends Stage {
             this._touchTranslate(e);
         }
         clearTimeout(this._longPressTimer);
+
+        // 移除menu
+        this._listener?.onMenuVisibleChange(false, "canvas", [0, 0]);
     }
 
-    public touchEnd(e: GestureResponderEvent, gestureState: PanResponderGestureState) {
-        if (this._activeTouchCount === 1 && !this._isTouchMove && !this._isLongPress) {
+    public touchEnd(
+        e: GestureResponderEvent,
+        gestureState: PanResponderGestureState
+    ) {
+        if (
+            this._activeTouchCount === 1 &&
+            !this._isTouchMove &&
+            !this._isLongPress
+        ) {
             // 单指且没有触发移动 视为点击
             const touchEndTime = Date.now();
             if (touchEndTime - this._touchEndTime < 250) {
@@ -83,10 +106,7 @@ export default class ControlStage extends Stage {
         if (this._needAddHistory && this._activeTouchCount === 1) {
             const operateElements = this.stageConfig.operateElements;
             // 更改silde中对应的元素数据
-            this._command.executeUpdateRender(
-                deepClone(operateElements),
-                true
-            );
+            this._command.executeUpdateRender(deepClone(operateElements), true);
         }
 
         clearTimeout(this._longPressTimer);
@@ -99,7 +119,9 @@ export default class ControlStage extends Stage {
     private _checkTouchMove() {
         // 判断是移动画布还是移动元素
         if (this.stageConfig.operateElements.length) {
-            const { left, top } = this.stageConfig.getTouchPosition(this._startPoint);
+            const { left, top } = this.stageConfig.getTouchPosition(
+                this._startPoint
+            );
             const currentSlide = this.stageConfig.getCurrentSlide();
             const operateElement = this.stageConfig.getTouchElement(
                 left,
@@ -108,7 +130,9 @@ export default class ControlStage extends Stage {
                 currentSlide?.elements || []
             );
 
-            this._canMoveElements = !!this.stageConfig.operateElements.find((element) => element.id === operateElement?.id);
+            this._canMoveElements = !!this.stageConfig.operateElements.find(
+                (element) => element.id === operateElement?.id
+            );
         }
 
         // 不可以移动元素就是可以移动画布
@@ -116,20 +140,49 @@ export default class ControlStage extends Stage {
     }
 
     private _longPress() {
-        console.log("Long Press")
+        console.log("Long Press");
         // 触发单击效果 no debounce
         this._singleTapAction();
         // 判断是否可以移动元素
         this._checkTouchMove();
+
+        // 如果有选中元素，则长按了元素，弹出元素操作menu
+        // 如果没有选中元素，则长按了画布，弹出画布操作menu
+        const operateElements = this.stageConfig.operateElements;
+        const elementPosition: [number, number] = [0, 0];
+        if (operateElements.length) {
+            const operateElement = operateElements[0];
+            let offsetX = 0;
+            // 不考虑旋转的情况
+            if (operateElement.type === "line") {
+                offsetX = (operateElement.start[0] + operateElement.end[0]) / 2;
+            } else {
+                offsetX = operateElement.width / 2;
+            }
+
+            const { x, y } = this.stageConfig.getCanvasPositionByStagePosition(
+                operateElement.left + offsetX,
+                operateElement.top
+            );
+            elementPosition[0] = x;
+            elementPosition[1] = y;
+        }
+        this._listener?.onMenuVisibleChange(
+            true,
+            operateElements.length ? "element" : "canvas",
+            operateElements.length ? elementPosition : this._startPoint
+        );
     }
 
     private _doubleTap() {
-        console.log("Double Tap")
+        console.log("Double Tap");
     }
 
     private _singleTapAction() {
         if (!this._isDoubleTap) {
-            const { left, top } = this.stageConfig.getTouchPosition(this._startPoint);
+            const { left, top } = this.stageConfig.getTouchPosition(
+                this._startPoint
+            );
             const currentSlide = this.stageConfig.getCurrentSlide();
             const operateElement = this.stageConfig.getTouchElement(
                 left,
@@ -149,7 +202,7 @@ export default class ControlStage extends Stage {
             } else {
                 this.clear();
             }
-            console.log("Single Tap", left, top)
+            console.log("Single Tap", left, top);
         } else {
             this._isDoubleTap = false;
         }
@@ -164,10 +217,17 @@ export default class ControlStage extends Stage {
         // 初始状态禁止移动画布
         const baseZoom = this.stageConfig.getFitZoom();
         const currentZoom = this.stageConfig.zoom;
-        if (currentZoom === baseZoom && this.stageConfig.scrollX === 0 && this.stageConfig.scrollY === 0) return;
+        if (
+            currentZoom === baseZoom &&
+            this.stageConfig.scrollX === 0 &&
+            this.stageConfig.scrollY === 0
+        )
+            return;
         // 移动画布
-        const scrollX = -(locationX - this._startPoint[0]) + this.stageConfig.scrollX;
-        const scrollY = -(locationY - this._startPoint[1]) + this.stageConfig.scrollY;
+        const scrollX =
+            -(locationX - this._startPoint[0]) + this.stageConfig.scrollX;
+        const scrollY =
+            -(locationY - this._startPoint[1]) + this.stageConfig.scrollY;
         this._startPoint = [locationX, locationY];
         this.stageConfig.setScroll(scrollX, scrollY);
     }
@@ -194,7 +254,7 @@ export default class ControlStage extends Stage {
     }
 
     private _touchTranslate(e: GestureResponderEvent) {
-        const { locationX, locationY} = e.nativeEvent
+        const { locationX, locationY } = e.nativeEvent;
         if (this._canMoveCanvas) {
             this._moveCanvas(locationX, locationY);
         } else if (this._canMoveElements) {
@@ -223,7 +283,8 @@ export default class ControlStage extends Stage {
         if (this._originScaleLength === 0) {
             this._originScaleLength = currentLength;
         }
-        const scaleUnit = (currentLength - this._originScaleLength) / this._originScaleLength;
+        const scaleUnit =
+            (currentLength - this._originScaleLength) / this._originScaleLength;
         this._command.executeZoom(scaleUnit);
         this._originScaleLength = currentLength;
     }
@@ -389,27 +450,47 @@ export default class ControlStage extends Stage {
                 if (
                     selectArea &&
                     this.stageConfig.textFocus &&
-                    (element.type === "text" || element.type === "shape" || element.type === "table")
+                    (element.type === "text" ||
+                        element.type === "shape" ||
+                        element.type === "table")
                 ) {
                     // 存在文本选中状态
                     const tableSelectCells = this.stageConfig.tableSelectCells;
                     let tableCellPosition: [number, number] | undefined;
                     if (tableSelectCells) {
-                        const startRow = Math.min(tableSelectCells[0][0], tableSelectCells[1][0]);
-                        const startCol = Math.min(tableSelectCells[0][1], tableSelectCells[1][1]);
-                        const endRow = Math.max(tableSelectCells[0][0], tableSelectCells[1][0]);
-                        const endCol = Math.max(tableSelectCells[0][1], tableSelectCells[1][1]);
+                        const startRow = Math.min(
+                            tableSelectCells[0][0],
+                            tableSelectCells[1][0]
+                        );
+                        const startCol = Math.min(
+                            tableSelectCells[0][1],
+                            tableSelectCells[1][1]
+                        );
+                        const endRow = Math.max(
+                            tableSelectCells[0][0],
+                            tableSelectCells[1][0]
+                        );
+                        const endCol = Math.max(
+                            tableSelectCells[0][1],
+                            tableSelectCells[1][1]
+                        );
                         if (startRow === endRow && startCol === endCol) {
                             tableCellPosition = [startRow, startCol];
                         }
                     }
-                    const lineTexts = this.stageConfig.getRenderContent(element, tableCellPosition);
+                    const lineTexts = this.stageConfig.getRenderContent(
+                        element,
+                        tableCellPosition
+                    );
                     const x = TEXT_MARGIN;
                     let y = TEXT_MARGIN;
                     let textLineHeight = 2;
                     if (element.type === "table") {
                         if (tableCellPosition) {
-                            textLineHeight = element.data[tableCellPosition[0]][tableCellPosition[1]].lineHeight;
+                            textLineHeight =
+                                element.data[tableCellPosition[0]][
+                                    tableCellPosition[1]
+                                ].lineHeight;
                         }
                     } else {
                         textLineHeight = element.lineHeight;
@@ -471,7 +552,8 @@ export default class ControlStage extends Stage {
                         key !== "LEFT" &&
                         key !== "RIGHT" &&
                         key !== "ANGLE"
-                    ) continue;
+                    )
+                        continue;
                     this.ctx.fillRect(...rects[key]);
                     this.ctx.strokeRect(...rects[key]);
                 }

@@ -12,7 +12,8 @@ import {
     IOnFontFamilyChange,
     IOnTableCellEditChange,
     IOnAnimationsChange,
-    IOnAnimationsEnd
+    IOnAnimationsEnd,
+    IOnMenuVisibleChange
 } from "../../types/listener";
 
 export default class Listener {
@@ -30,6 +31,7 @@ export default class Listener {
     public onTableCellEditChange: IOnTableCellEditChange;
     public onAnimationsChange: IOnAnimationsChange;
     public onAnimationsEnd: IOnAnimationsEnd;
+    public onMenuVisibleChange: IOnMenuVisibleChange;
     constructor() {
         this.onZoomChange = () => {};
         this.onEditChange = () => {};
@@ -45,5 +47,6 @@ export default class Listener {
         this.onTableCellEditChange = () => {};
         this.onAnimationsChange = () => {};
         this.onAnimationsEnd = () => {};
+        this.onMenuVisibleChange = () => {};
     }
 }

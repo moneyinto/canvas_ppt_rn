@@ -28,3 +28,5 @@ export type IOnTableCellEditChange = (mergeDisabled: boolean, splitDisabled: boo
 export type IOnAnimationsChange = () => void;
 
 export type IOnAnimationsEnd = () => void;
+
+export type IOnMenuVisibleChange = (visible: boolean, type: "element" | "canvas", [number, number]) => void;

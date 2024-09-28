@@ -162,6 +162,20 @@ export default class StageConfig {
         return { x, y, stageWidth, stageHeight };
     }
 
+    public getCanvasPositionByStagePosition(x: number, y: number) {
+        // slide中元素的坐标转化为canvas画布的坐标
+        const zoom = this.zoom;
+        const scrollX = this.scrollX;
+        const scrollY = this.scrollY;
+        const xInStage = x * zoom + scrollX;
+        const yInStage = y * zoom + scrollY;
+        const stageArea = this.getStageArea();
+        return {
+            x: xInStage + stageArea.x,
+            y: yInStage + stageArea.y
+        }
+    }
+
     public getTouchPosition([locationX, locationY]: [number, number]) {
         // 获取触摸点在画布坐标系中的坐标点位置
         const zoom = this.zoom;

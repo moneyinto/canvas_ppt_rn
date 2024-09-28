@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
     Text,
     PanResponder,
@@ -6,20 +6,25 @@ import {
     TouchableOpacity,
     View
 } from "react-native";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import Canvas from "react-native-canvas";
 import Editor from "../plugins/editor";
 import { slides } from "../mock";
-import NavHeader from "./NavHeader/index";
+import NavHeader from "./NavHeader";
+import Menu from "./Menu";
 import useSlideHandler from "../hooks/useSlideHandler";
 import { ActionType } from "../store/reducers/actionType";
 import instanceStore from "../store/instanceStore";
+import { IState } from "../types/state";
 
 function LayoutEditor(): JSX.Element {
     const canvasScreenRef = useRef(null);
     const canvasControlRef = useRef(null);
     const ContainerRef = useRef(null);
     let instance: Editor | null = null;
+    const menu = useSelector((state: IState) => state.menu);
+    let cacheMenuVisible = menu.visible;
+    const [screenWidth, setScreenWidth] = useState(320);
     const dispatch = useDispatch();
 
     const { initSlide } = useSlideHandler();
@@ -32,6 +37,7 @@ function LayoutEditor(): JSX.Element {
             setTimeout(() => {
                 container.measure((x, y, width, height, left, top) => {
                     console.log(x, y, width, height, left, top);
+                    setScreenWidth(width)
                     instance = new Editor(
                         canvasScreen,
                         canvasControl,
@@ -49,6 +55,25 @@ function LayoutEditor(): JSX.Element {
                             cursor
                         })
                         // historyLength.value = length;
+                    }
+
+                    // 菜单
+                    instance.listener.onMenuVisibleChange = (visible, type, position) => {
+                        // 减少dispatch
+                        if (cacheMenuVisible === false && visible === false) return;
+                        // ！！！注意，只执行一遍，这里的menu值一直是第一次加载的值，虽然dispatch改变了menu的值，也不起作用
+                        cacheMenuVisible = visible;
+                        dispatch({
+                            type: ActionType.UPDATE_MENU,
+                            menu: {
+                                visible,
+                                type,
+                                styles: {
+                                    left: position[0],
+                                    top: position[1]
+                                }
+                            }
+                        });
                     }
 
                     initSlide(instance);
@@ -79,6 +104,9 @@ function LayoutEditor(): JSX.Element {
     return (
         <View style={styles.LayoutContainerStyle}>
             <NavHeader />
+            {
+                menu.visible && <Menu width={screenWidth} />
+            }
             <View
                 {...panResponder.panHandlers}
                 style={styles.CanvasContainerStyle}
